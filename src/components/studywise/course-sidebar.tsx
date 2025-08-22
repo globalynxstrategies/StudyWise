@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StudyWiseLogo } from "@/components/studywise/studywise-logo";
-import { BookCopy, Plus, Trash2, Link as LinkIcon, GraduationCap, FolderUp } from "lucide-react";
+import { BookCopy, Plus, Trash2, Link as LinkIcon, GraduationCap, FolderUp, ClipboardPaste } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -201,6 +201,24 @@ export function CourseSidebar({
                         <Button variant="secondary" onClick={() => handleConnect(platform.name)}>Connect</Button>
                     </div>
                 ))}
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="py-2">
+            <h3 className="mb-4 text-lg font-medium">Browser Clipper</h3>
+            <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="flex items-center gap-4">
+                        <ClipboardPaste className="w-6 h-6" />
+                        <span className="font-medium">Web Clipper</span>
+                    </div>
+                    <Button variant="secondary" onClick={() => handleConnect("Web Clipper")}>Get Extension</Button>
+                </div>
+                 <p className="text-sm text-muted-foreground px-1">
+                    Clip articles, research, and important webpages directly into your StudyWise notes.
+                </p>
             </div>
           </div>
         </DialogContent>
