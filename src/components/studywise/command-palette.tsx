@@ -5,7 +5,7 @@ import * as React from "react"
 import { useTheme } from "next-themes"
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command"
 import type { Course, Note } from "@/types"
-import { File, Folder, PlusCircle, Moon, Sun, Monitor, BookCopy, Home } from "lucide-react"
+import { File, Folder, PlusCircle, Moon, Sun, Monitor, BookCopy, Home, Download } from "lucide-react"
 
 interface CommandPaletteProps {
   isOpen: boolean
@@ -17,6 +17,7 @@ interface CommandPaletteProps {
   onSelectNote: (id: string) => void
   onAddNewNote: () => void
   onAddCourse: (name: string) => void
+  onExportData: () => void
 }
 
 export function CommandPalette({ 
@@ -29,6 +30,7 @@ export function CommandPalette({
     onSelectNote,
     onAddNewNote,
     onAddCourse,
+    onExportData
 }: CommandPaletteProps) {
   const { setTheme } = useTheme()
 
@@ -48,10 +50,17 @@ export function CommandPalette({
           <CommandItem onSelect={() => runCommand(onAddNewNote)}>
             <PlusCircle className="mr-2 h-4 w-4" />
             <span>New Note</span>
+            <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+                <span className="text-xs">⌘</span>N
+            </kbd>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(handleAddCourse)}>
             <PlusCircle className="mr-2 h-4 w-4" />
             <span>New Course</span>
+          </CommandItem>
+           <CommandItem onSelect={onExportData}>
+            <Download className="mr-2 h-4 w-4" />
+            <span>Export Data</span>
           </CommandItem>
         </CommandGroup>
         <CommandGroup heading="Navigation">
@@ -105,4 +114,3 @@ export function CommandPalette({
     </CommandDialog>
   )
 }
-

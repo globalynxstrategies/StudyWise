@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useStudyData } from "@/hooks/use-study-data";
-import type { Note } from "@/types";
+import type { Course, Note, Tag } from "@/types";
 import { CourseSidebar } from "@/components/studywise/course-sidebar";
 import { NoteList } from "@/components/studywise/note-list";
 import { NoteEditor } from "@/components/studywise/note-editor";
@@ -30,26 +30,6 @@ export default function Home() {
     setSelectedNoteId(null);
   }, [selectedCourseId]);
   
-  React.useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setCommandPaletteOpen((open) => !open)
-      }
-    }
-    document.addEventListener("keydown", down)
-    return () => document.removeEventListener("keydown", down)
-  }, [])
-
-  const handleSelectCourse = (courseId: string | null) => {
-    setSelectedCourseId(courseId);
-    setSelectedNoteId(null);
-  };
-  
-  const handleSelectNote = (noteId: string | null) => {
-    setSelectedNoteId(noteId);
-  };
-
   const handleAddNewNote = () => {
     if (selectedCourseId && selectedCourseId !== "all") {
       const newNote = actions.addNote({
@@ -59,7 +39,33 @@ export default function Home() {
         tagIds: [],
       });
       setSelectedNoteId(newNote.id);
+    } else {
+        alert("Please select a course before creating a new note.")
     }
+  };
+
+  React.useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setCommandPaletteOpen((open) => !open)
+      }
+      if (e.key === "n" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        handleAddNewNote()
+      }
+    }
+    document.addEventListener("keydown", down)
+    return () => document.removeEventListener("keydown", down)
+  }, [handleAddNewNote])
+
+  const handleSelectCourse = (courseId: string | null) => {
+    setSelectedCourseId(courseId);
+    setSelectedNoteId(null);
+  };
+  
+  const handleSelectNote = (noteId: string | null) => {
+    setSelectedNoteId(noteId);
   };
 
   const handleTogglePin = (noteId: string) => {
@@ -85,6 +91,22 @@ export default function Home() {
       ? notes.filter(n => n.courseId === selectedCourseId)
       : [];
   }, [notes, selectedCourseId]);
+
+  const handleExportData = () => {
+    const data = {
+        courses,
+        notes,
+        tags,
+        exportedAt: new Date().toISOString(),
+    };
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+        JSON.stringify(data, null, 2)
+    )}`;
+    const link = document.createElement("a");
+    link.href = jsonString;
+    link.download = "studywise_backup.json";
+    link.click();
+  };
 
   const runCommand = (command: () => void) => {
     setCommandPaletteOpen(false);
@@ -165,6 +187,7 @@ export default function Home() {
         onSelectNote={handleSelectNote}
         onAddNewNote={handleAddNewNote}
         onAddCourse={(name) => runCommand(() => actions.addCourse(name))}
+        onExportData={() => runCommand(handleExportData)}
       />
     </div>
   );
