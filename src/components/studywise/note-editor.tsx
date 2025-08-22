@@ -1,0 +1,163 @@
+"use client";
+
+import * as React from "react";
+import type { Note, Tag } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Trash2, X, Plus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+
+interface NoteEditorProps {
+  note: Note;
+  allTags: Tag[];
+  updateNote: (id: string, updates: Partial<Note>) => void;
+  deleteNote: (id: string) => void;
+  createTag: (name: string) => Tag;
+}
+
+export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }: NoteEditorProps) {
+  const [title, setTitle] = React.useState(note.title);
+  const [content, setContent] = React.useState(note.content);
+  const [tagInput, setTagInput] = React.useState("");
+  const { toast } = useToast();
+  const contentRef = React.useRef<HTMLTextAreaElement>(null);
+
+  const noteTags = React.useMemo(() => {
+    return allTags.filter(tag => note.tagIds.includes(tag.id));
+  }, [allTags, note.tagIds]);
+
+  const handleTitleBlur = () => {
+    if (title.trim() === "") {
+        toast({ title: "Title cannot be empty.", variant: "destructive" });
+        setTitle(note.title);
+        return;
+    }
+    if (title !== note.title) {
+      updateNote(note.id, { title });
+      toast({ title: "Note saved!" });
+    }
+  };
+
+  const handleContentBlur = () => {
+    if (content !== note.content) {
+      updateNote(note.id, { content });
+      toast({ title: "Note saved!" });
+    }
+  };
+
+  const handleAddTag = () => {
+    if (tagInput.trim() === "") return;
+    const newOrExistingTag = createTag(tagInput.trim());
+    if (!note.tagIds.includes(newOrExistingTag.id)) {
+      updateNote(note.id, { tagIds: [...note.tagIds, newOrExistingTag.id] });
+    }
+    setTagInput("");
+  };
+
+  const handleRemoveTag = (tagIdToRemove: string) => {
+    updateNote(note.id, {
+      tagIds: note.tagIds.filter((id) => id !== tagIdToRemove),
+    });
+  };
+
+  const applyMarkdown = (syntax: { pre: string; post: string }) => {
+    const textarea = contentRef.current;
+    if (!textarea) return;
+    const { selectionStart, selectionEnd, value } = textarea;
+    const selectedText = value.substring(selectionStart, selectionEnd);
+    const newText = `${value.substring(0, selectionStart)}${syntax.pre}${selectedText}${syntax.post}${value.substring(selectionEnd)}`;
+    setContent(newText);
+    textarea.focus();
+    setTimeout(() => {
+      textarea.selectionStart = selectionStart + syntax.pre.length;
+      textarea.selectionEnd = selectionEnd + syntax.pre.length;
+    }, 0);
+  };
+  
+  return (
+    <div className="flex-1 flex flex-col p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={handleTitleBlur}
+          className="text-2xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto"
+          aria-label="Note title"
+        />
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <Trash2 className="h-5 w-5 text-destructive" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete this note. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => deleteNote(note.id)}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
+      <div className="flex items-center gap-2 border rounded-md p-1">
+         <Button variant="ghost" size="sm" onClick={() => applyMarkdown({ pre: '**', post: '**' })}>Bold</Button>
+         <Button variant="ghost" size="sm" onClick={() => applyMarkdown({ pre: '_', post: '_' })}>Italic</Button>
+         <Button variant="ghost" size="sm" onClick={() => applyMarkdown({ pre: '\n- ', post: '' })}>List</Button>
+         <Button variant="ghost" size="sm" onClick={() => applyMarkdown({ pre: '\n### ', post: '' })}>Heading</Button>
+      </div>
+
+      <Textarea
+        ref={contentRef}
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        onBlur={handleContentBlur}
+        placeholder="Start writing your note here... Markdown is supported."
+        className="flex-1 text-base resize-none"
+        aria-label="Note content"
+      />
+      
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Tags</label>
+        <div className="flex flex-wrap gap-2">
+          {noteTags.map((tag) => (
+            <Badge key={tag.id} variant="secondary" className="pl-3 pr-1">
+              {tag.name}
+              <button onClick={() => handleRemoveTag(tag.id)} className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5">
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Input
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
+            placeholder="Add a new tag..."
+            className="h-8"
+          />
+          <Button size="sm" onClick={handleAddTag}><Plus className="h-4 w-4 mr-1" /> Add</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
