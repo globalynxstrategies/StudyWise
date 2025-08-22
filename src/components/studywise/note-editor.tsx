@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, X, Plus, Sparkles, Loader2, HelpCircle, Bold, Italic, List, Heading, Highlighter, Image as ImageIcon, Code, Sigma, Layers } from "lucide-react";
+import { Trash2, X, Plus, Sparkles, Loader2, HelpCircle, Bold, Italic, List, Heading, Highlighter, Image as ImageIcon, Code, Sigma, Layers, Youtube, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -51,12 +51,20 @@ interface NoteEditorProps {
   createTag: (name: string) => Tag;
 }
 
+const getYouTubeVideoId = (url: string): string | null => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+};
+
 export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }: NoteEditorProps) {
   const [title, setTitle] = React.useState(note.title);
   const [content, setContent] = React.useState(note.content);
   const [tagInput, setTagInput] = React.useState("");
   const { toast } = useToast();
   const contentRef = React.useRef<HTMLTextAreaElement>(null);
+  const playerRef = React.useRef<any>(null); // To hold the YouTube player instance
   const debouncedContent = useDebounce(content, 500);
 
   const [isAiSheetOpen, setAiSheetOpen] = React.useState(false);
@@ -68,10 +76,49 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
   const [isImageDialogOpen, setImageDialogOpen] = React.useState(false);
   const [imageUrl, setImageUrl] = React.useState("");
   const [imageAlt, setImageAlt] = React.useState("");
+  
+  const [isVideoDialogOpen, setVideoDialogOpen] = React.useState(false);
+  const [videoUrlInput, setVideoUrlInput] = React.useState(note.videoUrl || "");
 
   const noteTags = React.useMemo(() => {
     return allTags.filter(tag => note.tagIds.includes(tag.id));
   }, [allTags, note.tagIds]);
+
+  const videoId = React.useMemo(() => getYouTubeVideoId(note.videoUrl || ''), [note.videoUrl]);
+  
+  // Load YouTube Iframe API
+  React.useEffect(() => {
+    if (videoId) {
+      const tag = document.createElement('script');
+      if (!window.YT) {
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.body.appendChild(tag);
+      }
+
+      const createPlayer = () => {
+        if (window.YT && window.YT.Player) {
+          playerRef.current = new window.YT.Player(`youtube-player-${note.id}`, {
+            height: '390',
+            width: '100%',
+            videoId: videoId,
+          });
+        }
+      };
+
+      if (!window.onYouTubeIframeAPIReady) {
+        window.onYouTubeIframeAPIReady = createPlayer;
+      } else {
+        createPlayer();
+      }
+      
+      return () => {
+        if (playerRef.current && playerRef.current.destroy) {
+          playerRef.current.destroy();
+        }
+      };
+    }
+  }, [videoId, note.id]);
+
 
   const handleTitleBlur = () => {
     if (title.trim() === "") {
@@ -106,6 +153,34 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
     updateNote(note.id, {
       tagIds: note.tagIds.filter((id) => id !== tagIdToRemove),
     });
+  };
+  
+  const formatTime = (seconds: number): string => {
+    const floorSeconds = Math.floor(seconds);
+    const min = Math.floor(floorSeconds / 60);
+    const sec = floorSeconds % 60;
+    return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  const handleInsertTimestamp = () => {
+    if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
+        const currentTime = playerRef.current.getCurrentTime();
+        const timestamp = formatTime(currentTime);
+        const timestampMarkdown = `[${timestamp}] `;
+        
+        const textarea = contentRef.current;
+        if (!textarea) return;
+        
+        const { selectionStart, value } = textarea;
+        const newText = `${value.substring(0, selectionStart)}${timestampMarkdown}${value.substring(selectionStart)}`;
+        setContent(newText);
+        
+        setTimeout(() => {
+          textarea.focus();
+          textarea.selectionStart = selectionStart + timestampMarkdown.length;
+          textarea.selectionEnd = selectionStart + timestampMarkdown.length;
+        }, 0);
+    }
   };
 
   const applyMarkdown = (syntax: { pre: string; post: string }) => {
@@ -160,6 +235,16 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
     }
   };
 
+  const handleSetVideoUrl = () => {
+    const newVideoId = getYouTubeVideoId(videoUrlInput);
+    if(videoUrlInput && !newVideoId) {
+        toast({ title: "Invalid YouTube URL", description: "Please enter a valid YouTube video URL.", variant: "destructive" });
+        return;
+    }
+    updateNote(note.id, { videoUrl: videoUrlInput });
+    setVideoDialogOpen(false);
+  }
+
   let sheetTitle = "";
   let sheetDescription = "";
   if (aiAction === 'summarize') {
@@ -173,6 +258,14 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
     sheetDescription = "Review the generated flashcards below.";
   }
   
+  const handleTimestampClick = (time: string) => {
+    if (playerRef.current && typeof playerRef.current.seekTo === 'function') {
+        const [minutes, seconds] = time.split(':').map(Number);
+        const timeInSeconds = (minutes * 60) + seconds;
+        playerRef.current.seekTo(timeInSeconds, true);
+        playerRef.current.playVideo();
+    }
+  }
 
   const MarkdownComponents = {
     code({ node, inline, className, children, ...props }: any) {
@@ -194,25 +287,54 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
     },
     p(props: any) {
         const { children } = props;
-        // This is a hacky way to check for latex
         if (typeof children === 'string' && children.includes('$')) {
             return <p><Latex>{children}</Latex></p>;
         }
-        if (Array.isArray(children) && children.some(c => typeof c === 'string' && c.includes('$'))) {
-            const newChildren = children.map(child => 
-                (typeof child === 'string') ? <Latex>{child}</Latex> : child
-            );
-            return <p>{newChildren}</p>
+        if (Array.isArray(children)) {
+            const newChildren = React.Children.map(children, child => {
+                if (typeof child === 'string') {
+                    // Match [MM:SS] timestamps
+                    const parts = child.split(/(\[\d{2}:\d{2}\])/g);
+                    return parts.map((part, index) => {
+                        const match = part.match(/^\[(\d{2}:\d{2})\]$/);
+                        if (match) {
+                            return (
+                                <Button key={index} variant="link" className="p-0 h-auto font-normal" onClick={() => handleTimestampClick(match[1])}>
+                                    {`[${match[1]}]`}
+                                </Button>
+                            );
+                        }
+                        return part.includes('$') ? <Latex key={index}>{part}</Latex> : part;
+                    });
+                }
+                return child;
+            });
+            return <p>{newChildren}</p>;
         }
         return <p>{children}</p>
     },
     li(props: any) {
         const { children } = props;
-         if (Array.isArray(children) && children.some(c => typeof c === 'string' && c.includes('$'))) {
-            const newChildren = children.map(child => 
-                (typeof child === 'string') ? <Latex>{child}</Latex> : child
-            );
-            return <li>{newChildren}</li>
+         if (Array.isArray(children)) {
+             const newChildren = React.Children.map(children, child => {
+                if (typeof child === 'string') {
+                    // Match [MM:SS] timestamps
+                    const parts = child.split(/(\[\d{2}:\d{2}\])/g);
+                    return parts.map((part, index) => {
+                        const match = part.match(/^\[(\d{2}:\d{2})\]$/);
+                        if (match) {
+                            return (
+                                <Button key={index} variant="link" className="p-0 h-auto font-normal" onClick={() => handleTimestampClick(match[1])}>
+                                    {`[${match[1]}]`}
+                                </Button>
+                            );
+                        }
+                        return part.includes('$') ? <Latex key={index}>{part}</Latex> : part;
+                    });
+                }
+                return child;
+            });
+            return <li>{newChildren}</li>;
         }
         return <li>{children}</li>
     }
@@ -290,8 +412,33 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <Dialog open={isVideoDialogOpen} onOpenChange={setVideoDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button title="Add YouTube Video" variant="ghost" size="icon" className="h-8 w-8"><Youtube className="h-4 w-4" /></Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Add YouTube Video</DialogTitle></DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <Input placeholder="YouTube Video URL" value={videoUrlInput} onChange={(e) => setVideoUrlInput(e.target.value)} />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setVideoDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleSetVideoUrl}>Set Video</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
       </div>
+
+      {videoId && (
+          <div className="p-4 border-b">
+              <div id={`youtube-player-${note.id}`} className="w-full aspect-video bg-black rounded-md mb-2"></div>
+              <Button onClick={handleInsertTimestamp} size="sm">
+                  <Clock className="h-4 w-4 mr-2" />
+                  Add Timestamp
+              </Button>
+          </div>
+      )}
       
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 overflow-hidden">
         <ScrollArea className="h-full">

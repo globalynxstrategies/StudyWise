@@ -16,6 +16,7 @@ export interface Note {
   courseId: string;
   tagIds: string[];
   isPinned: boolean;
+  videoUrl?: string; // Optional YouTube video URL
   createdAt: string;
   updatedAt: string;
 }
