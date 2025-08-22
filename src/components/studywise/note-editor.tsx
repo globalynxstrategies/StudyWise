@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, X, Plus, Sparkles, Loader2, HelpCircle } from "lucide-react";
+import { Trash2, X, Plus, Sparkles, Loader2, HelpCircle, Bold, Italic, List, Heading, Highlighter, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -19,6 +19,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+    DialogTrigger,
+  } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { processNote } from "@/ai/flows/note-processor-flow";
@@ -33,6 +41,13 @@ interface NoteEditorProps {
   createTag: (name: string) => Tag;
 }
 
+const renderMarkdown = (markdown: string) => {
+    let html = markdown.replace(/\n/g, '<br />');
+    html = html.replace(/!\[(.*?)\]\((.*?)\)/g, '<img alt="$1" src="$2" class="my-4 rounded-md max-w-full" />');
+    html = html.replace(/==(.*?)==/g, '<mark>$1</mark>');
+    return html;
+}
+
 export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }: NoteEditorProps) {
   const [title, setTitle] = React.useState(note.title);
   const [content, setContent] = React.useState(note.content);
@@ -44,6 +59,10 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
   const [aiAction, setAiAction] = React.useState<AIAction | null>(null);
   const [aiContent, setAiContent] = React.useState("");
   const [isAiLoading, setIsAiLoading] = React.useState(false);
+
+  const [isImageDialogOpen, setImageDialogOpen] = React.useState(false);
+  const [imageUrl, setImageUrl] = React.useState("");
+  const [imageAlt, setImageAlt] = React.useState("");
 
   const noteTags = React.useMemo(() => {
     return allTags.filter(tag => note.tagIds.includes(tag.id));
@@ -118,6 +137,16 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
     }
   }
 
+  const handleAddImage = () => {
+    if (imageUrl.trim()) {
+      const imageMarkdown = `\n![${imageAlt.trim()}](${imageUrl.trim()})\n`;
+      setContent(prev => prev + imageMarkdown);
+      setImageUrl("");
+      setImageAlt("");
+      setImageDialogOpen(false);
+    }
+  };
+
   const sheetTitle = aiAction === 'summarize' ? "Note Summary" : "Generated Questions";
   const sheetDescription = aiAction === 'summarize' ? "Here is a summary of your note." : "Here are some questions based on your note to test your knowledge.";
 
@@ -162,11 +191,28 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
         </div>
       </div>
 
-      <div className="flex items-center gap-2 border rounded-md p-1">
-         <Button variant="ghost" size="sm" onClick={() => applyMarkdown({ pre: '**', post: '**' })}>Bold</Button>
-         <Button variant="ghost" size="sm" onClick={() => applyMarkdown({ pre: '_', post: '_' })}>Italic</Button>
-         <Button variant="ghost" size="sm" onClick={() => applyMarkdown({ pre: '\n- ', post: '' })}>List</Button>
-         <Button variant="ghost" size="sm" onClick={() => applyMarkdown({ pre: '\n### ', post: '' })}>Heading</Button>
+      <div className="flex items-center gap-1 border rounded-md p-1">
+         <Button title="Bold" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '**', post: '**' })}><Bold className="h-4 w-4" /></Button>
+         <Button title="Italic" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '_', post: '_' })}><Italic className="h-4 w-4" /></Button>
+         <Button title="Highlight" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '==', post: '==' })}><Highlighter className="h-4 w-4" /></Button>
+         <Button title="Bulleted List" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '\n- ', post: '' })}><List className="h-4 w-4" /></Button>
+         <Button title="Heading" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '\n### ', post: '' })}><Heading className="h-4 w-4" /></Button>
+         <Dialog open={isImageDialogOpen} onOpenChange={setImageDialogOpen}>
+            <DialogTrigger asChild>
+                <Button title="Add Image" variant="ghost" size="icon" className="h-8 w-8"><ImageIcon className="h-4 w-4" /></Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader><DialogTitle>Add Image</DialogTitle></DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <Input placeholder="Image URL" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+                    <Input placeholder="Image description (for alt text)" value={imageAlt} onChange={(e) => setImageAlt(e.target.value)} />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setImageDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleAddImage}>Add Image</Button>
+                </DialogFooter>
+            </DialogContent>
+         </Dialog>
       </div>
 
       <Textarea
@@ -179,6 +225,8 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
         aria-label="Note content"
       />
       
+      <div className="prose dark:prose-invert max-w-none p-4 border rounded-md bg-muted/20" dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}/>
+
       <div className="space-y-2">
         <label className="text-sm font-medium">Tags</label>
         <div className="flex flex-wrap gap-2">

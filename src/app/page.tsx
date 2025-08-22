@@ -8,8 +8,7 @@ import { NoteList } from "@/components/studywise/note-list";
 import { NoteEditor } from "@/components/studywise/note-editor";
 import { ReviewModal } from "@/components/studywise/review-modal";
 import { Separator } from "@/components/ui/separator";
-import { Notebook, BookOpenCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Notebook } from "lucide-react";
 
 export default function Home() {
   const {
@@ -46,6 +45,13 @@ export default function Home() {
         tagIds: [],
       });
       setSelectedNoteId(newNote.id);
+    }
+  };
+
+  const handleTogglePin = (noteId: string) => {
+    const note = notes.find(n => n.id === noteId);
+    if (note) {
+      actions.updateNote(noteId, { isPinned: !note.isPinned });
     }
   };
 
@@ -86,6 +92,7 @@ export default function Home() {
             canAddNote={selectedCourseId !== 'all' && selectedCourseId !== null}
             onReview={() => setReviewModalOpen(true)}
             canReview={notesForReview.length > 0}
+            onTogglePin={handleTogglePin}
           />
           <Separator orientation="vertical" />
           <div className="flex-1 flex flex-col overflow-y-auto">

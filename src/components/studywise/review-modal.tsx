@@ -19,6 +19,13 @@ interface ReviewModalProps {
   onClose: () => void;
 }
 
+const renderMarkdownForReview = (markdown: string) => {
+    let html = markdown.replace(/\n/g, '<br />');
+    html = html.replace(/!\[(.*?)\]\((.*?)\)/g, '<img alt="$1" src="$2" class="my-4 rounded-md max-w-full" />');
+    html = html.replace(/==(.*?)==/g, '<mark>$1</mark>');
+    return html;
+}
+
 export function ReviewModal({ notes, isOpen, onClose }: ReviewModalProps) {
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [isFlipped, setIsFlipped] = React.useState(false);
@@ -72,8 +79,8 @@ export function ReviewModal({ notes, isOpen, onClose }: ReviewModalProps) {
                 </Card>
                 {/* Back of card */}
                 <Card className="absolute w-full h-full backface-hidden rotate-y-180 overflow-y-auto">
-                    <CardContent className="p-6">
-                        <div dangerouslySetInnerHTML={{ __html: currentNote.content.replace(/\n/g, '<br />') }} />
+                    <CardContent className="p-6 prose dark:prose-invert max-w-none">
+                        <div dangerouslySetInnerHTML={{ __html: renderMarkdownForReview(currentNote.content) }} />
                     </CardContent>
                 </Card>
               </div>

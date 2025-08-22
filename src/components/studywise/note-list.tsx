@@ -5,7 +5,8 @@ import type { Note } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, BookOpenCheck, FileText } from "lucide-react";
+import { Plus, BookOpenCheck, FileText, Pin, PinOff } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 interface NoteListProps {
   notes: Note[];
@@ -15,6 +16,36 @@ interface NoteListProps {
   canAddNote: boolean;
   onReview: () => void;
   canReview: boolean;
+  onTogglePin: (id: string) => void;
+}
+
+function NoteCard({ note, isSelected, onSelect, onTogglePin }: { note: Note, isSelected: boolean, onSelect: (id: string) => void, onTogglePin: (id: string) => void }) {
+  return (
+    <Card
+      onClick={() => onSelect(note.id)}
+      className={`group cursor-pointer transition-colors hover:bg-secondary/50 ${
+        isSelected ? "bg-secondary border-primary/50" : ""
+      }`}
+    >
+      <CardHeader className="p-4 relative">
+        <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+                e.stopPropagation();
+                onTogglePin(note.id);
+            }}
+        >
+            {note.isPinned ? <PinOff className="h-4 w-4 text-primary" /> : <Pin className="h-4 w-4" />}
+        </Button>
+        <CardTitle className="text-lg truncate pr-8">{note.title}</CardTitle>
+        <CardDescription>
+          {new Date(note.updatedAt).toLocaleDateString()}
+        </CardDescription>
+      </CardHeader>
+    </Card>
+  )
 }
 
 export function NoteList({
@@ -24,11 +55,16 @@ export function NoteList({
   onAddNewNote,
   canAddNote,
   onReview,
-  canReview
+  canReview,
+  onTogglePin,
 }: NoteListProps) {
   
-  const sortedNotes = React.useMemo(() => {
-    return [...notes].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  const { pinnedNotes, otherNotes } = React.useMemo(() => {
+    const sortedNotes = [...notes].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return {
+      pinnedNotes: sortedNotes.filter(n => n.isPinned),
+      otherNotes: sortedNotes.filter(n => !n.isPinned),
+    }
   }, [notes]);
 
   return (
@@ -43,23 +79,21 @@ export function NoteList({
       </div>
 
       <ScrollArea className="flex-1">
-        {sortedNotes.length > 0 ? (
+        {notes.length > 0 ? (
           <div className="p-4 space-y-3">
-            {sortedNotes.map((note) => (
-              <Card
-                key={note.id}
-                onClick={() => onSelectNote(note.id)}
-                className={`cursor-pointer transition-colors hover:bg-secondary/50 ${
-                  selectedNoteId === note.id ? "bg-secondary" : ""
-                }`}
-              >
-                <CardHeader className="p-4">
-                  <CardTitle className="text-lg truncate">{note.title}</CardTitle>
-                  <CardDescription>
-                    {new Date(note.updatedAt).toLocaleDateString()}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+            {pinnedNotes.length > 0 && (
+              <>
+                {pinnedNotes.map((note) => (
+                  <NoteCard key={note.id} note={note} isSelected={selectedNoteId === note.id} onSelect={onSelectNote} onTogglePin={onTogglePin} />
+                ))}
+                <div className="relative py-2">
+                    <Separator />
+                    <span className="absolute left-1/2 -translate-x-1/2 -top-2.5 bg-card/50 px-2 text-xs text-muted-foreground">Pinned</span>
+                </div>
+              </>
+            )}
+            {otherNotes.map((note) => (
+              <NoteCard key={note.id} note={note} isSelected={selectedNoteId === note.id} onSelect={onSelectNote} onTogglePin={onTogglePin} />
             ))}
           </div>
         ) : (

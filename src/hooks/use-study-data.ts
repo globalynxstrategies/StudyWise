@@ -76,11 +76,12 @@ export function useStudyData() {
     setNotes((prev) => prev.filter((n) => n.courseId !== courseId));
   }, []);
 
-  const addNote = useCallback((data: Omit<Note, "id" | "createdAt" | "updatedAt">): Note => {
+  const addNote = useCallback((data: Omit<Note, "id" | "createdAt" | "updatedAt" | "isPinned">): Note => {
     const now = new Date().toISOString();
     const newNote: Note = {
       ...data,
       id: crypto.randomUUID(),
+      isPinned: false,
       createdAt: now,
       updatedAt: now,
     };

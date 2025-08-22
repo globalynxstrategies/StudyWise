@@ -60,4 +60,7 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+  .prose mark {
+    @apply bg-primary/20;
+  }
 }

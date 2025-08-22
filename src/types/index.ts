@@ -15,6 +15,7 @@ export interface Note {
   content: string; // Markdown content
   courseId: string;
   tagIds: string[];
+  isPinned: boolean;
   createdAt: string;
   updatedAt: string;
 }
