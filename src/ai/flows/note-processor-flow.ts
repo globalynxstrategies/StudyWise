@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview AI flow for processing notes.
@@ -5,11 +6,16 @@
  * - processNote - A function that summarizes or generates questions from note content.
  * - NoteProcessorInput - The input type for the processNote function.
  * - NoteProcessorOutput - The return type for the processNote function.
+ * - generateFlashcards - A function that generates flashcards from note content.
+ * - Flashcard - The type for a single flashcard.
+ * - GenerateFlashcardsInput - The input type for the generateFlashcards function.
+ * - GenerateFlashcardsOutput - The return type for the generateFlashcards function.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
+// Schemas for general note processing (summary, questions)
 const NoteProcessorInputSchema = z.object({
   noteContent: z.string().describe('The content of the note to be processed.'),
   action: z.enum(['summarize', 'generate_questions']).describe("The action to perform on the note content."),
@@ -21,10 +27,35 @@ const NoteProcessorOutputSchema = z.object({
 });
 export type NoteProcessorOutput = z.infer<typeof NoteProcessorOutputSchema>;
 
+
+// Schemas for Flashcard Generation
+const FlashcardSchema = z.object({
+    question: z.string().describe("The question or front side of the flashcard."),
+    answer: z.string().describe("The answer or back side of the flashcard."),
+});
+export type Flashcard = z.infer<typeof FlashcardSchema>;
+
+const GenerateFlashcardsInputSchema = z.object({
+    noteContent: z.string().describe('The content of the note to generate flashcards from.'),
+});
+export type GenerateFlashcardsInput = z.infer<typeof GenerateFlashcardsInputSchema>;
+
+const GenerateFlashcardsOutputSchema = z.object({
+    flashcards: z.array(FlashcardSchema).describe('An array of generated flashcards.'),
+});
+export type GenerateFlashcardsOutput = z.infer<typeof GenerateFlashcardsOutputSchema>;
+
+
+// Exported functions to be called from the client
 export async function processNote(input: NoteProcessorInput): Promise<NoteProcessorOutput> {
   return noteProcessorFlow(input);
 }
 
+export async function generateFlashcards(input: GenerateFlashcardsInput): Promise<GenerateFlashcardsOutput> {
+    return generateFlashcardsFlow(input);
+}
+
+// Prompts
 const summarizePrompt = ai.definePrompt({
     name: 'summarizeNotePrompt',
     input: { schema: NoteProcessorInputSchema },
@@ -50,6 +81,19 @@ const generateQuestionsPrompt = ai.definePrompt({
     `,
 });
 
+const generateFlashcardsPrompt = ai.definePrompt({
+    name: 'generateFlashcardsPrompt',
+    input: { schema: GenerateFlashcardsInputSchema },
+    output: { schema: GenerateFlashcardsOutputSchema },
+    prompt: `You are an expert in creating study materials. Based on the note content provided, generate a set of flashcards. Each flashcard should have a clear question and a concise answer. Focus on key terms, definitions, and core concepts.
+
+    Note Content:
+    {{{noteContent}}}
+    `,
+});
+
+
+// Flows
 const noteProcessorFlow = ai.defineFlow(
   {
     name: 'noteProcessorFlow',
@@ -65,4 +109,16 @@ const noteProcessorFlow = ai.defineFlow(
       return output!;
     }
   }
+);
+
+const generateFlashcardsFlow = ai.defineFlow(
+    {
+        name: 'generateFlashcardsFlow',
+        inputSchema: GenerateFlashcardsInputSchema,
+        outputSchema: GenerateFlashcardsOutputSchema,
+    },
+    async (input) => {
+        const { output } = await generateFlashcardsPrompt(input);
+        return output!;
+    }
 );

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, X, Plus, Sparkles, Loader2, HelpCircle, Bold, Italic, List, Heading, Highlighter, Image as ImageIcon, Code, Sigma } from "lucide-react";
+import { Trash2, X, Plus, Sparkles, Loader2, HelpCircle, Bold, Italic, List, Heading, Highlighter, Image as ImageIcon, Code, Sigma, Layers } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -29,7 +29,8 @@ import {
   } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { processNote } from "@/ai/flows/note-processor-flow";
+import { processNote, generateFlashcards } from "@/ai/flows/note-processor-flow";
+import type { Flashcard } from "@/ai/flows/note-processor-flow";
 import { Separator } from "@/components/ui/separator";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -37,9 +38,10 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Latex from 'react-latex-next';
 import 'katex/dist/katex.min.css';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
 
-
-type AIAction = "summarize" | "generate_questions";
+type AIAction = "summarize" | "generate_questions" | "generate_flashcards";
 
 interface NoteEditorProps {
   note: Note;
@@ -60,6 +62,7 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
   const [isAiSheetOpen, setAiSheetOpen] = React.useState(false);
   const [aiAction, setAiAction] = React.useState<AIAction | null>(null);
   const [aiContent, setAiContent] = React.useState("");
+  const [generatedFlashcards, setGeneratedFlashcards] = React.useState<Flashcard[]>([]);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
 
   const [isImageDialogOpen, setImageDialogOpen] = React.useState(false);
@@ -128,9 +131,16 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
     setAiSheetOpen(true);
     setIsAiLoading(true);
     setAiContent("");
+    setGeneratedFlashcards([]);
+
     try {
-      const result = await processNote({ noteContent: note.content, action });
-      setAiContent(result.processedContent);
+        if (action === 'generate_flashcards') {
+            const result = await generateFlashcards({ noteContent: note.content });
+            setGeneratedFlashcards(result.flashcards);
+        } else {
+            const result = await processNote({ noteContent: note.content, action });
+            setAiContent(result.processedContent);
+        }
     } catch (error) {
       console.error("AI action failed", error);
       toast({ title: "AI action failed", description: "Could not process the note. Please try again.", variant: "destructive" });
@@ -150,8 +160,19 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
     }
   };
 
-  const sheetTitle = aiAction === 'summarize' ? "Note Summary" : "Generated Questions";
-  const sheetDescription = aiAction === 'summarize' ? "Here is a summary of your note." : "Here are some questions based on your note to test your knowledge.";
+  let sheetTitle = "";
+  let sheetDescription = "";
+  if (aiAction === 'summarize') {
+    sheetTitle = "Note Summary";
+    sheetDescription = "Here is a summary of your note.";
+  } else if (aiAction === 'generate_questions') {
+    sheetTitle = "Generated Questions";
+    sheetDescription = "Here are some questions based on your note to test your knowledge.";
+  } else if (aiAction === 'generate_flashcards') {
+    sheetTitle = "Generated Flashcards";
+    sheetDescription = "Review the generated flashcards below.";
+  }
+  
 
   const MarkdownComponents = {
     code({ node, inline, className, children, ...props }: any) {
@@ -216,7 +237,11 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => handleAiAction("generate_questions")}>
                     <HelpCircle className="h-4 w-4 mr-2" />
-                    Generate Questions
+                    Questions
+                </Button>
+                 <Button variant="outline" size="sm" onClick={() => handleAiAction("generate_flashcards")}>
+                    <Layers className="h-4 w-4 mr-2" />
+                    Flashcards
                 </Button>
                 <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -319,7 +344,7 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
         </div>
       </div>
       <Sheet open={isAiSheetOpen} onOpenChange={setAiSheetOpen}>
-        <SheetContent className="sm:max-w-xl">
+        <SheetContent className="w-full sm:max-w-2xl">
             <SheetHeader>
                 <SheetTitle>{sheetTitle}</SheetTitle>
                 <SheetDescription>{sheetDescription}</SheetDescription>
@@ -330,7 +355,13 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
                         <Loader2 className="w-8 h-8 animate-spin text-primary" />
                     </div>
                 ) : (
-                    <div className="prose dark:prose-invert" dangerouslySetInnerHTML={{ __html: aiContent.replace(/\n/g, '<br />') }}/>
+                    <>
+                        {aiAction === 'generate_flashcards' ? (
+                            <FlashcardViewer flashcards={generatedFlashcards} />
+                        ) : (
+                            <div className="prose dark:prose-invert" dangerouslySetInnerHTML={{ __html: aiContent.replace(/\n/g, '<br />') }}/>
+                        )}
+                    </>
                 )}
             </ScrollArea>
         </SheetContent>
@@ -338,6 +369,70 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
     </div>
   );
 }
+
+function FlashcardViewer({ flashcards }: { flashcards: Flashcard[] }) {
+    const [currentIndex, setCurrentIndex] = React.useState(0);
+    const [isFlipped, setIsFlipped] = React.useState(false);
+  
+    if (!flashcards.length) {
+      return <p>No flashcards generated.</p>;
+    }
+  
+    const handleNext = () => {
+      setIsFlipped(false);
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % flashcards.length);
+      }, 150);
+    };
+  
+    const handlePrev = () => {
+      setIsFlipped(false);
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev - 1 + flashcards.length) % flashcards.length);
+      }, 150);
+    };
+  
+    const currentCard = flashcards[currentIndex];
+  
+    return (
+      <div className="flex flex-col gap-4 items-center">
+        <div 
+          className="w-full h-80 perspective-1000 cursor-pointer"
+          onClick={() => setIsFlipped(!isFlipped)}
+        >
+          <div 
+            className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}
+          >
+            {/* Front of card */}
+            <Card className="absolute w-full h-full backface-hidden flex items-center justify-center p-6">
+                <p className="text-xl text-center">{currentCard.question}</p>
+            </Card>
+            {/* Back of card */}
+            <Card className="absolute w-full h-full backface-hidden rotate-y-180 overflow-y-auto p-6">
+                <p className="text-center">{currentCard.answer}</p>
+            </Card>
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground">Click card to flip</p>
+        <div className="flex justify-between w-full items-center">
+          <div className="text-sm text-muted-foreground">
+            Card {currentIndex + 1} of {flashcards.length}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="icon" onClick={handlePrev}><ArrowLeft className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" onClick={() => setIsFlipped(!isFlipped)}><RefreshCw className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" onClick={handleNext}><ArrowRight className="h-4 w-4" /></Button>
+          </div>
+        </div>
+        <style jsx>{`
+            .perspective-1000 { perspective: 1000px; }
+            .transform-style-3d { transform-style: preserve-3d; }
+            .rotate-y-180 { transform: rotateY(180deg); }
+            .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        `}</style>
+      </div>
+    );
+  }
 
 function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
