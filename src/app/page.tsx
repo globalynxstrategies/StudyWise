@@ -66,6 +66,11 @@ function App() {
   };
   
   const handleSelectNote = (noteId: string | null) => {
+    // If the note is not in the current course, switch course
+    const note = notes.find(n => n.id === noteId);
+    if(note && note.courseId !== selectedCourseId) {
+        setSelectedCourseId(note.courseId);
+    }
     setSelectedNoteId(noteId);
   };
 
@@ -125,14 +130,16 @@ function App() {
       />
       <Separator orientation="vertical" />
       <main className="flex-1 flex flex-col min-w-0">
-        <div className="flex-shrink-0 border-b p-2 flex items-center justify-end">
-            <Button variant="outline" onClick={() => setCommandPaletteOpen(true)}>
+        <div className="flex-shrink-0 border-b p-2 flex items-center justify-between">
+           <div className="flex-1"></div> {/* Spacer */}
+            <Button variant="outline" className="w-full max-w-xs justify-start text-muted-foreground" onClick={() => setCommandPaletteOpen(true)}>
                 <Search className="mr-2 h-4 w-4" />
-                <span>Search...</span>
-                <kbd className="ml-4 pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+                <span>Search notes and courses...</span>
+                <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
                     <span className="text-xs">⌘</span>K
                 </kbd>
             </Button>
+            <div className="flex-1"></div> {/* Spacer */}
         </div>
         <div className="flex-1 flex overflow-hidden">
           <NoteList

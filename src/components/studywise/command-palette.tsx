@@ -41,6 +41,13 @@ export function CommandPalette({
     }
   }
 
+  const handleSelectNote = (noteId: string) => {
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    onSelectCourse(note.courseId);
+    onSelectNote(noteId);
+  }
+
   return (
     <CommandDialog open={isOpen} onOpenChange={setIsOpen}>
       <CommandInput placeholder="Type a command or search..." />
@@ -71,6 +78,7 @@ export function CommandPalette({
             {courses.map((course) => (
                 <CommandItem
                 key={course.id}
+                value={`course-${course.id}-${course.name}`}
                 onSelect={() => runCommand(() => onSelectCourse(course.id))}
                 >
                 <Folder className="mr-2 h-4 w-4" />
@@ -80,7 +88,8 @@ export function CommandPalette({
             {notes.map((note) => (
                 <CommandItem
                 key={note.id}
-                onSelect={() => runCommand(() => onSelectNote(note.id))}
+                value={`note-${note.id}-${note.title}`}
+                onSelect={() => runCommand(() => handleSelectNote(note.id))}
                 >
                 <File className="mr-2 h-4 w-4" />
                 <span>{note.title}</span>
