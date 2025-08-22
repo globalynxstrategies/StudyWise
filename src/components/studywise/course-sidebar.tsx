@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StudyWiseLogo } from "@/components/studywise/studywise-logo";
-import { BookCopy, Plus, Trash2 } from "lucide-react";
+import { BookCopy, Plus, Trash2, Link as LinkIcon, GraduationCap } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -26,6 +27,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 
 interface CourseSidebarProps {
   courses: Course[];
@@ -34,6 +37,13 @@ interface CourseSidebarProps {
   onAddCourse: (name: string) => void;
   onDeleteCourse: (id: string) => void;
 }
+
+const lmsPlatforms = [
+    { name: 'Canvas', icon: <GraduationCap className="w-6 h-6" /> },
+    { name: 'Moodle', icon: <GraduationCap className="w-6 h-6" /> },
+    { name: 'Blackboard', icon: <GraduationCap className="w-6 h-6" /> },
+    { name: 'Google Classroom', icon: <GraduationCap className="w-6 h-6" /> },
+]
 
 export function CourseSidebar({
   courses,
@@ -44,6 +54,8 @@ export function CourseSidebar({
 }: CourseSidebarProps) {
   const [newCourseName, setNewCourseName] = React.useState("");
   const [isAddDialogOpen, setAddDialogOpen] = React.useState(false);
+  const [isIntegrationsOpen, setIntegrationsOpen] = React.useState(false);
+  const { toast } = useToast();
   const sortedCourses = React.useMemo(() => [...courses].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [courses]);
 
   const handleAddCourse = () => {
@@ -53,6 +65,13 @@ export function CourseSidebar({
       setAddDialogOpen(false);
     }
   };
+  
+  const handleConnectLms = (name: string) => {
+    toast({
+        title: `Connecting to ${name}...`,
+        description: "This feature is coming soon!",
+    })
+  }
 
   return (
     <aside className="w-64 flex flex-col p-4 bg-card/50">
@@ -130,6 +149,35 @@ export function CourseSidebar({
           ))}
         </div>
       </ScrollArea>
+
+      <Separator className="my-2" />
+
+       <Dialog open={isIntegrationsOpen} onOpenChange={setIntegrationsOpen}>
+        <DialogTrigger asChild>
+          <Button variant="ghost" className="justify-start">
+             <LinkIcon className="mr-2 h-4 w-4" /> Integrations
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Connect to Learning Platforms</DialogTitle>
+            <DialogDescription>
+              Import your courses and materials directly from your school's learning management system.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {lmsPlatforms.map(platform => (
+                <div key={platform.name} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="flex items-center gap-4">
+                        {platform.icon}
+                        <span className="font-medium">{platform.name}</span>
+                    </div>
+                    <Button variant="secondary" onClick={() => handleConnectLms(platform.name)}>Connect</Button>
+                </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }
