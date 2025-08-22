@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 export const metadata: Metadata = {
   title: 'StudyWise',
   description: 'A focused note-taking app for students.',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
