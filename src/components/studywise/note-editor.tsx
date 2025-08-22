@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, X, Plus, Sparkles, Loader2, HelpCircle, Bold, Italic, List, Heading, Highlighter, Image as ImageIcon } from "lucide-react";
+import { Trash2, X, Plus, Sparkles, Loader2, HelpCircle, Bold, Italic, List, Heading, Highlighter, Image as ImageIcon, Code, Sigma } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import {
     Dialog,
     DialogContent,
@@ -31,6 +31,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { processNote } from "@/ai/flows/note-processor-flow";
 import { Separator } from "@/components/ui/separator";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import Latex from 'react-latex-next';
+import 'katex/dist/katex.min.css';
+
 
 type AIAction = "summarize" | "generate_questions";
 
@@ -42,21 +49,6 @@ interface NoteEditorProps {
   createTag: (name: string) => Tag;
 }
 
-const renderMarkdown = (markdown: string) => {
-    let html = markdown.replace(/### (.*)/g, '<h3>$1</h3>');
-    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/_(.*?)_/g, '<em>$1</em>');
-    html = html.replace(/==(.*?)==/g, '<mark>$1</mark>');
-    html = html.replace(/^- (.*)/gm, '<li>$1</li>');
-    // Basic list conversion
-    html = html.replace(/^(<li>.*<\/li>)$/gm, '<ul>$1</ul>');
-    html = html.replace(/<\/ul>\n<ul>/g, '');
-    
-    html = html.replace(/!\[(.*?)\]\((.*?)\)/g, '<img alt="$1" src="$2" class="my-4 rounded-md max-w-full" />');
-    html = html.replace(/\n/g, '<br />');
-    return html;
-}
-
 export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }: NoteEditorProps) {
   const [title, setTitle] = React.useState(note.title);
   const [content, setContent] = React.useState(note.content);
@@ -64,7 +56,6 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
   const { toast } = useToast();
   const contentRef = React.useRef<HTMLTextAreaElement>(null);
   const debouncedContent = useDebounce(content, 500);
-
 
   const [isAiSheetOpen, setAiSheetOpen] = React.useState(false);
   const [aiAction, setAiAction] = React.useState<AIAction | null>(null);
@@ -162,6 +153,51 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
   const sheetTitle = aiAction === 'summarize' ? "Note Summary" : "Generated Questions";
   const sheetDescription = aiAction === 'summarize' ? "Here is a summary of your note." : "Here are some questions based on your note to test your knowledge.";
 
+  const MarkdownComponents = {
+    code({ node, inline, className, children, ...props }: any) {
+      const match = /language-(\w+)/.exec(className || '');
+      return !inline && match ? (
+        <SyntaxHighlighter
+          style={vscDarkPlus}
+          language={match[1]}
+          PreTag="div"
+          {...props}
+        >
+          {String(children).replace(/\n$/, '')}
+        </SyntaxHighlighter>
+      ) : (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
+    },
+    p(props: any) {
+        const { children } = props;
+        // This is a hacky way to check for latex
+        if (typeof children === 'string' && children.includes('$')) {
+            return <p><Latex>{children}</Latex></p>;
+        }
+        if (Array.isArray(children) && children.some(c => typeof c === 'string' && c.includes('$'))) {
+            const newChildren = children.map(child => 
+                (typeof child === 'string') ? <Latex>{child}</Latex> : child
+            );
+            return <p>{newChildren}</p>
+        }
+        return <p>{children}</p>
+    },
+    li(props: any) {
+        const { children } = props;
+         if (Array.isArray(children) && children.some(c => typeof c === 'string' && c.includes('$'))) {
+            const newChildren = children.map(child => 
+                (typeof child === 'string') ? <Latex>{child}</Latex> : child
+            );
+            return <li>{newChildren}</li>
+        }
+        return <li>{children}</li>
+    }
+  };
+
+
   return (
     <div className="flex-1 flex flex-col">
       <div className="p-4 border-b">
@@ -210,6 +246,9 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
             <Button title="Highlight" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '==', post: '==' })}><Highlighter className="h-4 w-4" /></Button>
             <Button title="Bulleted List" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '\n- ', post: '' })}><List className="h-4 w-4" /></Button>
             <Button title="Heading" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '\n### ', post: '' })}><Heading className="h-4 w-4" /></Button>
+            <Button title="Code Block" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '\n```\n', post: '\n```\n' })}><Code className="h-4 w-4" /></Button>
+            <Button title="LaTeX/Math" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '$', post: '$' })}><Sigma className="h-4 w-4" /></Button>
+
             <Dialog open={isImageDialogOpen} onOpenChange={setImageDialogOpen}>
                 <DialogTrigger asChild>
                     <Button title="Add Image" variant="ghost" size="icon" className="h-8 w-8"><ImageIcon className="h-4 w-4" /></Button>
@@ -244,8 +283,14 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
             <ScrollArea className="h-full">
                 <div 
                     className="prose dark:prose-invert max-w-none p-6" 
-                    dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
-                />
+                >
+                   <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={MarkdownComponents}
+                    >
+                        {content.replace(/==(.*?)==/g, '<mark>$1</mark>')}
+                    </ReactMarkdown>
+                </div>
             </ScrollArea>
         </div>
       </div>
