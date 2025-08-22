@@ -86,10 +86,12 @@ export function NoteList({
                 {pinnedNotes.map((note) => (
                   <NoteCard key={note.id} note={note} isSelected={selectedNoteId === note.id} onSelect={onSelectNote} onTogglePin={onTogglePin} />
                 ))}
-                <div className="relative py-2">
-                    <Separator />
-                    <span className="absolute left-1/2 -translate-x-1/2 -top-2.5 bg-card/50 px-2 text-xs text-muted-foreground">Pinned</span>
-                </div>
+                {otherNotes.length > 0 && (
+                   <div className="relative py-2">
+                        <Separator />
+                        <span className="absolute left-1/2 -translate-x-1/2 -top-2.5 bg-card/50 px-2 text-xs text-muted-foreground">Pinned</span>
+                    </div>
+                )}
               </>
             )}
             {otherNotes.map((note) => (
