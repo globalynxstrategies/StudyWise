@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, X, Plus, Sparkles, Loader2, HelpCircle, Bold, Italic, List, Heading, Highlighter, Image as ImageIcon, Code, Sigma, Layers, Youtube, Clock } from "lucide-react";
+import { Trash2, X, Plus, Sparkles, Loader2, HelpCircle, Bold, Italic, List, Heading, Highlighter, Image as ImageIcon, Code, Sigma, Layers, Youtube, Clock, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -40,6 +40,7 @@ import Latex from 'react-latex-next';
 import 'katex/dist/katex.min.css';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type AIAction = "summarize" | "generate_questions" | "generate_flashcards";
 
@@ -255,6 +256,20 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, u
     setVideoDialogOpen(false);
   }
 
+  const handleExport = (format: "md") => {
+    if (format === 'md') {
+        const markdownContent = `# ${title}\n\n${content}`;
+        const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        link.download = `${safeTitle}.md`;
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+  }
+
   let sheetTitle = "";
   let sheetDescription = "";
   if (aiAction === 'summarize') {
@@ -417,6 +432,19 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, u
                     <Layers className="h-4 w-4 mr-2" />
                     Flashcards
                 </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                            <Download className="h-4 w-4 mr-2" />
+                            Export
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => handleExport("md")}>
+                            as Markdown (.md)
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
                 <AlertDialog>
                 <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="icon">
