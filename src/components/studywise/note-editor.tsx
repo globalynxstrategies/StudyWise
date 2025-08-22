@@ -30,6 +30,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { processNote } from "@/ai/flows/note-processor-flow";
+import { Separator } from "@/components/ui/separator";
 
 type AIAction = "summarize" | "generate_questions";
 
@@ -42,9 +43,17 @@ interface NoteEditorProps {
 }
 
 const renderMarkdown = (markdown: string) => {
-    let html = markdown.replace(/\n/g, '<br />');
-    html = html.replace(/!\[(.*?)\]\((.*?)\)/g, '<img alt="$1" src="$2" class="my-4 rounded-md max-w-full" />');
+    let html = markdown.replace(/### (.*)/g, '<h3>$1</h3>');
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/_(.*?)_/g, '<em>$1</em>');
     html = html.replace(/==(.*?)==/g, '<mark>$1</mark>');
+    html = html.replace(/^- (.*)/gm, '<li>$1</li>');
+    // Basic list conversion
+    html = html.replace(/^(<li>.*<\/li>)$/gm, '<ul>$1</ul>');
+    html = html.replace(/<\/ul>\n<ul>/g, '');
+    
+    html = html.replace(/!\[(.*?)\]\((.*?)\)/g, '<img alt="$1" src="$2" class="my-4 rounded-md max-w-full" />');
+    html = html.replace(/\n/g, '<br />');
     return html;
 }
 
@@ -54,6 +63,8 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
   const [tagInput, setTagInput] = React.useState("");
   const { toast } = useToast();
   const contentRef = React.useRef<HTMLTextAreaElement>(null);
+  const debouncedContent = useDebounce(content, 500);
+
 
   const [isAiSheetOpen, setAiSheetOpen] = React.useState(false);
   const [aiAction, setAiAction] = React.useState<AIAction | null>(null);
@@ -80,12 +91,13 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
     }
   };
 
-  const handleContentBlur = () => {
-    if (content !== note.content) {
-      updateNote(note.id, { content });
+  React.useEffect(() => {
+    if (debouncedContent !== note.content) {
+      updateNote(note.id, { content: debouncedContent });
       toast({ title: "Note saved!" });
     }
-  };
+  }, [debouncedContent, note.id, note.content, updateNote, toast]);
+
 
   const handleAddTag = () => {
     if (tagInput.trim() === "") return;
@@ -151,83 +163,94 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
   const sheetDescription = aiAction === 'summarize' ? "Here is a summary of your note." : "Here are some questions based on your note to test your knowledge.";
 
   return (
-    <div className="flex-1 flex flex-col p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <Input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={handleTitleBlur}
-          className="text-2xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto"
-          aria-label="Note title"
-        />
-        <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleAiAction("summarize")}>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Summarize
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleAiAction("generate_questions")}>
-                <HelpCircle className="h-4 w-4 mr-2" />
-                Generate Questions
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Trash2 className="h-5 w-5 text-destructive" />
+    <div className="flex-1 flex flex-col">
+      <div className="p-4 border-b">
+        <div className="flex items-center justify-between mb-2">
+            <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={handleTitleBlur}
+            className="text-2xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto"
+            aria-label="Note title"
+            />
+            <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleAiAction("summarize")}>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Summarize
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete this note. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => deleteNote(note.id)}>Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                <Button variant="outline" size="sm" onClick={() => handleAiAction("generate_questions")}>
+                    <HelpCircle className="h-4 w-4 mr-2" />
+                    Generate Questions
+                </Button>
+                <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                    <Trash2 className="h-5 w-5 text-destructive" />
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will permanently delete this note. This action cannot be undone.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => deleteNote(note.id)}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+                </AlertDialog>
+            </div>
+        </div>
+
+        <div className="flex items-center gap-1 border rounded-md p-1">
+            <Button title="Bold" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '**', post: '**' })}><Bold className="h-4 w-4" /></Button>
+            <Button title="Italic" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '_', post: '_' })}><Italic className="h-4 w-4" /></Button>
+            <Button title="Highlight" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '==', post: '==' })}><Highlighter className="h-4 w-4" /></Button>
+            <Button title="Bulleted List" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '\n- ', post: '' })}><List className="h-4 w-4" /></Button>
+            <Button title="Heading" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '\n### ', post: '' })}><Heading className="h-4 w-4" /></Button>
+            <Dialog open={isImageDialogOpen} onOpenChange={setImageDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button title="Add Image" variant="ghost" size="icon" className="h-8 w-8"><ImageIcon className="h-4 w-4" /></Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Add Image</DialogTitle></DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <Input placeholder="Image URL" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+                        <Input placeholder="Image description (for alt text)" value={imageAlt} onChange={(e) => setImageAlt(e.target.value)} />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setImageDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleAddImage}>Add Image</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+      </div>
+      
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 overflow-hidden">
+        <ScrollArea className="h-full">
+            <Textarea
+                ref={contentRef}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Start writing your note here... Markdown is supported."
+                className="flex-1 text-base resize-none h-full border-0 rounded-none focus-visible:ring-0"
+                aria-label="Note content"
+            />
+        </ScrollArea>
+        <div className="border-l h-full">
+            <ScrollArea className="h-full">
+                <div 
+                    className="prose dark:prose-invert max-w-none p-6" 
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+                />
+            </ScrollArea>
         </div>
       </div>
 
-      <div className="flex items-center gap-1 border rounded-md p-1">
-         <Button title="Bold" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '**', post: '**' })}><Bold className="h-4 w-4" /></Button>
-         <Button title="Italic" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '_', post: '_' })}><Italic className="h-4 w-4" /></Button>
-         <Button title="Highlight" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '==', post: '==' })}><Highlighter className="h-4 w-4" /></Button>
-         <Button title="Bulleted List" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '\n- ', post: '' })}><List className="h-4 w-4" /></Button>
-         <Button title="Heading" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '\n### ', post: '' })}><Heading className="h-4 w-4" /></Button>
-         <Dialog open={isImageDialogOpen} onOpenChange={setImageDialogOpen}>
-            <DialogTrigger asChild>
-                <Button title="Add Image" variant="ghost" size="icon" className="h-8 w-8"><ImageIcon className="h-4 w-4" /></Button>
-            </DialogTrigger>
-            <DialogContent>
-                <DialogHeader><DialogTitle>Add Image</DialogTitle></DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <Input placeholder="Image URL" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
-                    <Input placeholder="Image description (for alt text)" value={imageAlt} onChange={(e) => setImageAlt(e.target.value)} />
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setImageDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleAddImage}>Add Image</Button>
-                </DialogFooter>
-            </DialogContent>
-         </Dialog>
-      </div>
-
-      <Textarea
-        ref={contentRef}
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        onBlur={handleContentBlur}
-        placeholder="Start writing your note here... Markdown is supported."
-        className="flex-1 text-base resize-none"
-        aria-label="Note content"
-      />
-      
-      <div className="prose dark:prose-invert max-w-none p-4 border rounded-md bg-muted/20" dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}/>
-
-      <div className="space-y-2">
+      <div className="p-4 border-t space-y-2">
         <label className="text-sm font-medium">Tags</label>
         <div className="flex flex-wrap gap-2">
           {noteTags.map((tag) => (
@@ -269,4 +292,20 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
       </Sheet>
     </div>
   );
+}
+
+function useDebounce<T>(value: T, delay: number): T {
+    const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
+
+    React.useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [value, delay]);
+
+    return debouncedValue;
 }
