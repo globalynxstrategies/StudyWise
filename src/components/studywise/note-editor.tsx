@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, X, Plus } from "lucide-react";
+import { Trash2, X, Plus, Sparkles, Loader2, HelpCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -19,6 +19,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { processNote } from "@/ai/flows/note-processor-flow";
+
+type AIAction = "summarize" | "generate_questions";
 
 interface NoteEditorProps {
   note: Note;
@@ -34,6 +39,11 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
   const [tagInput, setTagInput] = React.useState("");
   const { toast } = useToast();
   const contentRef = React.useRef<HTMLTextAreaElement>(null);
+
+  const [isAiSheetOpen, setAiSheetOpen] = React.useState(false);
+  const [aiAction, setAiAction] = React.useState<AIAction | null>(null);
+  const [aiContent, setAiContent] = React.useState("");
+  const [isAiLoading, setIsAiLoading] = React.useState(false);
 
   const noteTags = React.useMemo(() => {
     return allTags.filter(tag => note.tagIds.includes(tag.id));
@@ -87,6 +97,30 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
     }, 0);
   };
   
+  const handleAiAction = async (action: AIAction) => {
+    if (!note.content.trim()) {
+      toast({ title: "Note content is empty.", description: "Please write some notes first before using AI features.", variant: "destructive" });
+      return;
+    }
+    setAiAction(action);
+    setAiSheetOpen(true);
+    setIsAiLoading(true);
+    setAiContent("");
+    try {
+      const result = await processNote({ noteContent: note.content, action });
+      setAiContent(result.processedContent);
+    } catch (error) {
+      console.error("AI action failed", error);
+      toast({ title: "AI action failed", description: "Could not process the note. Please try again.", variant: "destructive" });
+      setAiContent("Sorry, there was an error. Please try again.");
+    } finally {
+      setIsAiLoading(false);
+    }
+  }
+
+  const sheetTitle = aiAction === 'summarize' ? "Note Summary" : "Generated Questions";
+  const sheetDescription = aiAction === 'summarize' ? "Here is a summary of your note." : "Here are some questions based on your note to test your knowledge.";
+
   return (
     <div className="flex-1 flex flex-col p-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -97,25 +131,35 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
           className="text-2xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto"
           aria-label="Note title"
         />
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Trash2 className="h-5 w-5 text-destructive" />
+        <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => handleAiAction("summarize")}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Summarize
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete this note. This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => deleteNote(note.id)}>Delete</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+            <Button variant="outline" size="sm" onClick={() => handleAiAction("generate_questions")}>
+                <HelpCircle className="h-4 w-4 mr-2" />
+                Generate Questions
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Trash2 className="h-5 w-5 text-destructive" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete this note. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => deleteNote(note.id)}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 border rounded-md p-1">
@@ -158,6 +202,23 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
           <Button size="sm" onClick={handleAddTag}><Plus className="h-4 w-4 mr-1" /> Add</Button>
         </div>
       </div>
+      <Sheet open={isAiSheetOpen} onOpenChange={setAiSheetOpen}>
+        <SheetContent className="sm:max-w-xl">
+            <SheetHeader>
+                <SheetTitle>{sheetTitle}</SheetTitle>
+                <SheetDescription>{sheetDescription}</SheetDescription>
+            </SheetHeader>
+            <ScrollArea className="h-[calc(100%-80px)] mt-4 pr-4">
+                {isAiLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    </div>
+                ) : (
+                    <div className="prose dark:prose-invert" dangerouslySetInnerHTML={{ __html: aiContent.replace(/\n/g, '<br />') }}/>
+                )}
+            </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
