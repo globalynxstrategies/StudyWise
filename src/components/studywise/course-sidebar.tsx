@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StudyWiseLogo } from "@/components/studywise/studywise-logo";
-import { BookCopy, Plus, Trash2, Link as LinkIcon, GraduationCap, FolderUp, ClipboardPaste } from "lucide-react";
+import { BookCopy, Plus, Trash2, Link as LinkIcon, GraduationCap, FolderUp, ClipboardPaste, BookText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +50,12 @@ const cloudPlatforms = [
     { name: 'Dropbox', icon: <FolderUp className="w-6 h-6" /> },
     { name: 'OneDrive', icon: <FolderUp className="w-6 h-6" /> },
 ]
+
+const citationManagers = [
+    { name: 'Zotero', icon: <BookText className="w-6 h-6" /> },
+    { name: 'Mendeley', icon: <BookText className="w-6 h-6" /> },
+]
+
 
 export function CourseSidebar({
   courses,
@@ -168,7 +174,7 @@ export function CourseSidebar({
           <DialogHeader>
             <DialogTitle>Connect to External Services</DialogTitle>
             <DialogDescription>
-              Import your courses and materials directly from your school's LMS or cloud storage.
+              Import your courses and materials directly from your school's LMS, cloud storage, and more.
             </DialogDescription>
           </DialogHeader>
           
@@ -202,6 +208,26 @@ export function CourseSidebar({
                     </div>
                 ))}
             </div>
+          </div>
+
+          <Separator />
+          
+          <div className="py-2">
+            <h3 className="mb-4 text-lg font-medium">Citation Managers</h3>
+            <div className="space-y-4">
+                {citationManagers.map(platform => (
+                    <div key={platform.name} className="flex items-center justify-between p-3 rounded-lg border">
+                        <div className="flex items-center gap-4">
+                            {platform.icon}
+                            <span className="font-medium">{platform.name}</span>
+                        </div>
+                        <Button variant="secondary" onClick={() => handleConnect(platform.name)}>Connect</Button>
+                    </div>
+                ))}
+            </div>
+             <p className="text-sm text-muted-foreground px-1 pt-2">
+                Connect your favorite citation manager to easily add references to your research notes.
+            </p>
           </div>
 
           <Separator />
