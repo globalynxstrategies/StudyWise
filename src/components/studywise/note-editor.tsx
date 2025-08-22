@@ -39,7 +39,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import Latex from 'react-latex-next';
 import 'katex/dist/katex.min.css';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -95,14 +95,17 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, u
   React.useEffect(() => {
     if (videoId) {
       const tag = document.createElement('script');
-      if (!window.YT) {
+      if (!(window as any).YT) {
         tag.src = "https://www.youtube.com/iframe_api";
         document.body.appendChild(tag);
       }
 
       const createPlayer = () => {
-        if (window.YT && window.YT.Player) {
-          playerRef.current = new window.YT.Player(`youtube-player-${note.id}`, {
+        if ((window as any).YT && (window as any).YT.Player) {
+            if (playerRef.current) {
+                playerRef.current.destroy();
+            }
+          playerRef.current = new (window as any).YT.Player(`youtube-player-${note.id}`, {
             height: '390',
             width: '100%',
             videoId: videoId,
@@ -110,15 +113,18 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, u
         }
       };
 
-      if (!window.onYouTubeIframeAPIReady) {
-        window.onYouTubeIframeAPIReady = createPlayer;
+      if (!(window as any).onYouTubeIframeAPIReady) {
+        (window as any).onYouTubeIframeAPIReady = () => {
+            setTimeout(createPlayer, 100);
+        };
       } else {
-        createPlayer();
+         setTimeout(createPlayer, 100);
       }
       
       return () => {
         if (playerRef.current && playerRef.current.destroy) {
           playerRef.current.destroy();
+          playerRef.current = null;
         }
       };
     }
@@ -171,38 +177,52 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, u
     if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
         const currentTime = playerRef.current.getCurrentTime();
         const timestamp = formatTime(currentTime);
-        const timestampMarkdown = `[${timestamp}] `;
+        const timestampMarkdown = `[${timestamp}]`;
         
         const textarea = contentRef.current;
         if (!textarea) return;
         
         const { selectionStart, value } = textarea;
-        const newText = `${value.substring(0, selectionStart)}${timestampMarkdown}${value.substring(selectionStart)}`;
+        const newText = `${value.substring(0, selectionStart)} ${timestampMarkdown} ${value.substring(selectionStart)}`;
         setContent(newText);
         
         setTimeout(() => {
           textarea.focus();
-          textarea.selectionStart = selectionStart + timestampMarkdown.length;
-          textarea.selectionEnd = selectionStart + timestampMarkdown.length;
+          textarea.selectionStart = selectionStart + timestampMarkdown.length + 2;
+          textarea.selectionEnd = selectionStart + timestampMarkdown.length + 2;
         }, 0);
     }
   };
 
-  const applyMarkdown = (syntax: { pre: string; post: string }) => {
+  const applyMarkdown = (syntax: { pre: string; post: string, list?: boolean }) => {
     const textarea = contentRef.current;
     if (!textarea) return;
     const { selectionStart, selectionEnd, value } = textarea;
     const selectedText = value.substring(selectionStart, selectionEnd);
-    const newText = `${value.substring(0, selectionStart)}${syntax.pre}${selectedText}${syntax.post}${value.substring(selectionEnd)}`;
+    let newText;
+
+    if (syntax.list) {
+        const lines = selectedText.split('\n');
+        const newLines = lines.map(line => `${syntax.pre}${line}`);
+        const modifiedText = newLines.join('\n');
+        newText = `${value.substring(0, selectionStart)}${modifiedText}${value.substring(selectionEnd)}`;
+    } else {
+        newText = `${value.substring(0, selectionStart)}${syntax.pre}${selectedText}${syntax.post}${value.substring(selectionEnd)}`;
+    }
+
     setContent(newText);
     
     setTimeout(() => {
         textarea.focus();
-        // If there was a selection, place cursor after the closing syntax
         if(selectionEnd > selectionStart) {
-             textarea.selectionStart = selectionEnd + syntax.pre.length + syntax.post.length;
-             textarea.selectionEnd = selectionEnd + syntax.pre.length + syntax.post.length;
-        } else { // Otherwise, place it between the syntax characters
+             if (syntax.list) {
+                textarea.selectionStart = selectionStart;
+                textarea.selectionEnd = selectionEnd + (syntax.pre.length * (selectedText.match(/\n/g) || []).length + 1);
+             } else {
+                textarea.selectionStart = selectionEnd + syntax.pre.length + syntax.post.length;
+                textarea.selectionEnd = selectionEnd + syntax.pre.length + syntax.post.length;
+             }
+        } else {
              textarea.selectionStart = selectionStart + syntax.pre.length;
              textarea.selectionEnd = selectionStart + syntax.pre.length;
         }
@@ -311,41 +331,22 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, u
         </code>
       );
     },
-    p(props: any) {
+    p: (props: any) => {
         const { children } = props;
-        if (typeof children === 'string' && children.includes('$')) {
-            return <p><Latex>{children}</Latex></p>;
-        }
-        if (Array.isArray(children)) {
-            const newChildren = React.Children.map(children, child => {
-                if (typeof child === 'string') {
-                    // Match [MM:SS] timestamps
-                    const parts = child.split(/(\[\d{2}:\d{2}\])/g);
-                    return parts.map((part, index) => {
-                        const match = part.match(/^\[(\d{2}:\d{2})\]$/);
-                        if (match) {
-                            return (
-                                <Button key={index} variant="link" className="p-0 h-auto font-normal" onClick={() => handleTimestampClick(match[1])}>
-                                    {`[${match[1]}]`}
-                                </Button>
-                            );
-                        }
-                        return part.includes('$') ? <Latex key={index}>{part}</Latex> : part;
-                    });
-                }
-                return child;
-            });
-            return <p>{newChildren}</p>;
-        }
-        return <p>{children}</p>
+        return <p className="mb-4">{children}</p>;
     },
-    li(props: any) {
-        const { children, ...rest } = props;
-        // This is a bit of a hack to get task lists to be interactive
-        // We find the input checkbox and manually update the raw markdown state
+    a: (props: any) => {
+        const { href, children } = props;
+        const timestampMatch = href.match(/^#t=(\d{2}:\d{2})$/);
+        if (timestampMatch) {
+            return <Button variant="link" className="p-0 h-auto font-normal" onClick={() => handleTimestampClick(timestampMatch[1])}>{children}</Button>
+        }
+        return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
+    },
+    li: (props: any) => {
+        const { children, checked, ...rest } = props;
         const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             const target = e.target;
-            // The position is a property from remark-gfm
             const position = target.parentElement?.dataset.sourcepos;
             if(!position) return;
             
@@ -359,55 +360,25 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, u
                 lines[startLine - 1] = newLine;
                 setContent(lines.join('\n'));
             }
-        }
-        
-         if (rest.className === 'task-list-item') {
-            // Check if the input is inside the children
-            let input = null;
-            let otherChildren: React.ReactNode[] = [];
-            React.Children.forEach(children, (child) => {
-                if (React.isValidElement(child) && child.type === 'input') {
-                    input = child;
-                } else {
-                    otherChildren.push(child);
-                }
-            });
+        };
 
-            if (input) {
-                return (
-                    <li {...rest} className="task-list-item flex items-center gap-2">
-                        {React.cloneElement(input as React.ReactElement<any>, {onChange: handleCheckboxChange})}
-                        <div>{otherChildren}</div>
-                    </li>
-                );
-            }
+        if (typeof checked === 'boolean') {
+            return (
+                <li {...rest} className="task-list-item flex items-center gap-2 my-1">
+                    <input type="checkbox" checked={checked} onChange={handleCheckboxChange} className="w-4 h-4" data-sourcepos={props.sourcePosition && `${props.sourcePosition.start.line}:${props.sourcePosition.start.column}-${props.sourcePosition.end.line}:${props.sourcePosition.end.column}`} />
+                    <span>{children}</span>
+                </li>
+            );
         }
-
-        if (Array.isArray(children)) {
-             const newChildren = React.Children.map(children, child => {
-                if (typeof child === 'string') {
-                    // Match [MM:SS] timestamps
-                    const parts = child.split(/(\[\d{2}:\d{2}\])/g);
-                    return parts.map((part, index) => {
-                        const match = part.match(/^\[(\d{2}:\d{2})\]$/);
-                        if (match) {
-                            return (
-                                <Button key={index} variant="link" className="p-0 h-auto font-normal" onClick={() => handleTimestampClick(match[1])}>
-                                    {`[${match[1]}]`}
-                                </Button>
-                            );
-                        }
-                        return part.includes('$') ? <Latex key={index}>{part}</Latex> : part;
-                    });
-                }
-                return child;
-            });
-            return <li {...rest}>{newChildren}</li>;
-        }
-        return <li {...rest}>{children}</li>
+        return <li {...rest}>{children}</li>;
     }
   };
 
+  const processMarkdown = (markdown: string) => {
+    // Convert [MM:SS] to a clickable link format that remark can parse
+    return markdown.replace(/\[(\d{2}:\d{2})\]/g, '[$1](#t=$1)')
+                   .replace(/==(.*?)==/g, '<mark>$1</mark>'); // Keep highlight logic
+  };
 
   return (
     <div className="flex-1 flex flex-col">
@@ -472,8 +443,8 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, u
             <Button title="Bold" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '**', post: '**' })}><Bold className="h-4 w-4" /></Button>
             <Button title="Italic" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '_', post: '_' })}><Italic className="h-4 w-4" /></Button>
             <Button title="Highlight" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '==', post: '==' })}><Highlighter className="h-4 w-4" /></Button>
-            <Button title="Bulleted List" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '\n- ', post: '' })}><List className="h-4 w-4" /></Button>
-            <Button title="Heading" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '\n### ', post: '' })}><Heading className="h-4 w-4" /></Button>
+            <Button title="Bulleted List" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '- ', post: '', list: true })}><List className="h-4 w-4" /></Button>
+            <Button title="Heading" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '### ', post: '' })}><Heading className="h-4 w-4" /></Button>
             <Button title="Code Block" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '\n```\n', post: '\n```\n' })}><Code className="h-4 w-4" /></Button>
             <Button title="LaTeX/Math" variant="ghost" size="icon" className="h-8 w-8" onClick={() => applyMarkdown({ pre: '$', post: '$' })}><Sigma className="h-4 w-4" /></Button>
 
@@ -528,21 +499,19 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, u
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Start writing your note here... Markdown is supported."
-                className="flex-1 text-base resize-none h-full border-0 rounded-none focus-visible:ring-0"
+                className="flex-1 text-base resize-none h-full border-0 rounded-none focus-visible:ring-0 p-6"
                 aria-label="Note content"
             />
         </ScrollArea>
         <div className="border-l h-full">
             <ScrollArea className="h-full">
-                <div 
-                    className="prose dark:prose-invert max-w-none p-6" 
-                >
+                <div className="prose dark:prose-invert max-w-none p-6">
                    <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[]}
                         components={MarkdownComponents}
-                    >
-                        {content.replace(/==(.*?)==/g, '<mark>$1</mark>')}
-                    </ReactMarkdown>
+                        children={processMarkdown(content)}
+                    />
                 </div>
             </ScrollArea>
         </div>
@@ -607,7 +576,9 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, u
                         {aiAction === 'generate_flashcards' ? (
                             <FlashcardViewer flashcards={generatedFlashcards} />
                         ) : (
-                            <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: aiContent.replace(/\n/g, '<br />') }}/>
+                            <div className="prose dark:prose-invert max-w-none">
+                                <ReactMarkdown children={aiContent} />
+                            </div>
                         )}
                     </>
                 )}
@@ -657,7 +628,9 @@ function FlashcardViewer({ flashcards }: { flashcards: Flashcard[] }) {
             </Card>
             {/* Back of card */}
             <Card className="absolute w-full h-full backface-hidden rotate-y-180 overflow-y-auto p-6">
-                <p className="text-center">{currentCard.answer}</p>
+                <div className="prose dark:prose-invert text-center">
+                    <ReactMarkdown children={currentCard.answer} />
+                </div>
             </Card>
           </div>
         </div>

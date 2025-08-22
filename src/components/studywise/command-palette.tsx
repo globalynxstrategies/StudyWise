@@ -42,9 +42,6 @@ export function CommandPalette({
   }
 
   const handleSelectNote = (noteId: string) => {
-    const note = notes.find(n => n.id === noteId);
-    if (!note) return;
-    onSelectCourse(note.courseId);
     onSelectNote(noteId);
   }
 

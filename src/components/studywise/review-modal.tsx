@@ -12,19 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, ArrowRight, RefreshCw, X } from "lucide-react";
-
-interface ReviewModalProps {
-  notes: Note[];
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-const renderMarkdownForReview = (markdown: string) => {
-    let html = markdown.replace(/\n/g, '<br />');
-    html = html.replace(/!\[(.*?)\]\((.*?)\)/g, '<img alt="$1" src="$2" class="my-4 rounded-md max-w-full" />');
-    html = html.replace(/==(.*?)==/g, '<mark>$1</mark>');
-    return html;
-}
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export function ReviewModal({ notes, isOpen, onClose }: ReviewModalProps) {
   const [currentIndex, setCurrentIndex] = React.useState(0);
@@ -72,15 +61,17 @@ export function ReviewModal({ notes, isOpen, onClose }: ReviewModalProps) {
                 className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}
               >
                 {/* Front of card */}
-                <Card className="absolute w-full h-full backface-hidden flex items-center justify-center">
+                <Card className="absolute w-full h-full backface-hidden flex items-center justify-center p-6">
                   <CardHeader>
                     <CardTitle className="text-2xl text-center">{currentNote.title}</CardTitle>
                   </CardHeader>
                 </Card>
                 {/* Back of card */}
-                <Card className="absolute w-full h-full backface-hidden rotate-y-180 overflow-y-auto">
-                    <CardContent className="p-6 prose dark:prose-invert max-w-none">
-                        <div dangerouslySetInnerHTML={{ __html: renderMarkdownForReview(currentNote.content) }} />
+                <Card className="absolute w-full h-full backface-hidden rotate-y-180 overflow-y-auto p-6">
+                    <CardContent className="prose dark:prose-invert max-w-none">
+                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {currentNote.content.replace(/==(.*?)==/g, '<mark>$1</mark>')}
+                        </ReactMarkdown>
                     </CardContent>
                 </Card>
               </div>
@@ -92,9 +83,9 @@ export function ReviewModal({ notes, isOpen, onClose }: ReviewModalProps) {
                 Card {currentIndex + 1} of {shuffledNotes.length}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handlePrev}><ArrowLeft className="h-4 w-4" /></Button>
-              <Button onClick={() => setIsFlipped(!isFlipped)}><RefreshCw className="h-4 w-4" /></Button>
-              <Button variant="outline" onClick={handleNext}><ArrowRight className="h-4 w-4" /></Button>
+              <Button variant="outline" size="icon" onClick={handlePrev}><ArrowLeft className="h-4 w-4" /></Button>
+              <Button variant="outline" size="icon" onClick={() => setIsFlipped(!isFlipped)}><RefreshCw className="h-4 w-4" /></Button>
+              <Button variant="outline" size="icon" onClick={handleNext}><ArrowRight className="h-4 w-4" /></Button>
             </div>
             <Button variant="secondary" onClick={onClose}><X className="h-4 w-4 mr-2" /> Finish</Button>
         </DialogFooter>
@@ -108,3 +99,9 @@ export function ReviewModal({ notes, isOpen, onClose }: ReviewModalProps) {
     </Dialog>
   );
 }
+
+interface ReviewModalProps {
+    notes: Note[];
+    isOpen: boolean;
+    onClose: () => void;
+  }

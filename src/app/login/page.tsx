@@ -17,7 +17,6 @@ import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { StudyWiseLogo } from "@/components/studywise/studywise-logo";
-import { Separator } from "@/components/ui/separator";
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -141,7 +140,7 @@ export default function LoginPage() {
                         <span className="w-full border-t" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">
+                        <span className="bg-card px-2 text-muted-foreground">
                         Or continue with
                         </span>
                     </div>
@@ -181,7 +180,7 @@ export default function LoginPage() {
                         <span className="w-full border-t" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">
+                        <span className="bg-card px-2 text-muted-foreground">
                         Or continue with
                         </span>
                     </div>
@@ -192,7 +191,7 @@ export default function LoginPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Password</Label>
-                  <Input id="signup-password" type="password" required value={password} onChange={(e) => setPassword(e.TumblingWindow.value)} />
+                  <Input id="signup-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
                 </div>
               </CardContent>
               <CardFooter>
