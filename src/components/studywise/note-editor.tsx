@@ -193,10 +193,17 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, u
     const selectedText = value.substring(selectionStart, selectionEnd);
     const newText = `${value.substring(0, selectionStart)}${syntax.pre}${selectedText}${syntax.post}${value.substring(selectionEnd)}`;
     setContent(newText);
-    textarea.focus();
+    
     setTimeout(() => {
-      textarea.selectionStart = selectionStart + syntax.pre.length;
-      textarea.selectionEnd = selectionEnd + syntax.pre.length;
+        textarea.focus();
+        // If there was a selection, place cursor after the closing syntax
+        if(selectionEnd > selectionStart) {
+             textarea.selectionStart = selectionEnd + syntax.pre.length + syntax.post.length;
+             textarea.selectionEnd = selectionEnd + syntax.pre.length + syntax.post.length;
+        } else { // Otherwise, place it between the syntax characters
+             textarea.selectionStart = selectionStart + syntax.pre.length;
+             textarea.selectionEnd = selectionStart + syntax.pre.length;
+        }
     }, 0);
   };
   
@@ -317,8 +324,50 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, u
         return <p>{children}</p>
     },
     li(props: any) {
-        const { children } = props;
-         if (Array.isArray(children)) {
+        const { children, ...rest } = props;
+        // This is a bit of a hack to get task lists to be interactive
+        // We find the input checkbox and manually update the raw markdown state
+        const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const target = e.target;
+            // The position is a property from remark-gfm
+            const position = target.parentElement?.dataset.sourcepos;
+            if(!position) return;
+            
+            const [startLine, ] = position.split('-')[0].split(':').map(Number);
+            
+            const lines = content.split('\n');
+            const line = lines[startLine - 1];
+
+            if(line && (line.includes('- [ ]') || line.includes('- [x]'))) {
+                const newLine = target.checked ? line.replace('- [ ]', '- [x]') : line.replace('- [x]', '- [ ]');
+                lines[startLine - 1] = newLine;
+                setContent(lines.join('\n'));
+            }
+        }
+        
+         if (rest.className === 'task-list-item') {
+            // Check if the input is inside the children
+            let input = null;
+            let otherChildren: React.ReactNode[] = [];
+            React.Children.forEach(children, (child) => {
+                if (React.isValidElement(child) && child.type === 'input') {
+                    input = child;
+                } else {
+                    otherChildren.push(child);
+                }
+            });
+
+            if (input) {
+                return (
+                    <li {...rest} className="task-list-item flex items-center gap-2">
+                        {React.cloneElement(input as React.ReactElement<any>, {onChange: handleCheckboxChange})}
+                        <div>{otherChildren}</div>
+                    </li>
+                );
+            }
+        }
+
+        if (Array.isArray(children)) {
              const newChildren = React.Children.map(children, child => {
                 if (typeof child === 'string') {
                     // Match [MM:SS] timestamps
@@ -337,9 +386,9 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, u
                 }
                 return child;
             });
-            return <li>{newChildren}</li>;
+            return <li {...rest}>{newChildren}</li>;
         }
-        return <li>{children}</li>
+        return <li {...rest}>{children}</li>
     }
   };
 
@@ -529,7 +578,7 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, u
                         {aiAction === 'generate_flashcards' ? (
                             <FlashcardViewer flashcards={generatedFlashcards} />
                         ) : (
-                            <div className="prose dark:prose-invert" dangerouslySetInnerHTML={{ __html: aiContent.replace(/\n/g, '<br />') }}/>
+                            <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: aiContent.replace(/\n/g, '<br />') }}/>
                         )}
                     </>
                 )}
