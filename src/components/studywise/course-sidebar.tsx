@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StudyWiseLogo } from "@/components/studywise/studywise-logo";
-import { BookCopy, Plus, Trash2, Link as LinkIcon, GraduationCap, FolderUp, ClipboardPaste, BookText, Moon, Sun, Monitor, Paintbrush } from "lucide-react";
+import { BookCopy, Plus, Trash2, Link as LinkIcon, GraduationCap, FolderUp, ClipboardPaste, BookText, Moon, Sun, Monitor, Paintbrush, LogOut } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/context/auth-context";
 
 interface CourseSidebarProps {
   courses: Course[];
@@ -106,6 +107,7 @@ export function CourseSidebar({
   const [isAddDialogOpen, setAddDialogOpen] = React.useState(false);
   const [isIntegrationsOpen, setIntegrationsOpen] = React.useState(false);
   const { toast } = useToast();
+  const { logout, user } = useAuth();
   const sortedCourses = React.useMemo(() => [...courses].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [courses]);
 
   const handleAddCourse = () => {
@@ -201,93 +203,102 @@ export function CourseSidebar({
       </ScrollArea>
 
       <Separator className="my-2" />
-      <ThemeSwitcher />
-
-       <Dialog open={isIntegrationsOpen} onOpenChange={setIntegrationsOpen}>
-        <DialogTrigger asChild>
-          <Button variant="ghost" className="justify-start">
-             <LinkIcon className="mr-2 h-4 w-4" /> Integrations
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Connect to External Services</DialogTitle>
-            <DialogDescription>
-              Import your courses and materials directly from your school's LMS, cloud storage, and more.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-2">
-            <h3 className="mb-4 text-lg font-medium">Learning Platforms</h3>
-            <div className="space-y-4">
-                {lmsPlatforms.map(platform => (
-                    <div key={platform.name} className="flex items-center justify-between p-3 rounded-lg border">
-                        <div className="flex items-center gap-4">
-                            {platform.icon}
-                            <span className="font-medium">{platform.name}</span>
-                        </div>
-                        <Button variant="secondary" onClick={() => handleConnect(platform.name)}>Connect</Button>
-                    </div>
-                ))}
+      <div className="space-y-1">
+        <ThemeSwitcher />
+        <Dialog open={isIntegrationsOpen} onOpenChange={setIntegrationsOpen}>
+          <DialogTrigger asChild>
+            <Button variant="ghost" className="justify-start w-full">
+              <LinkIcon className="mr-2 h-4 w-4" /> Integrations
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Connect to External Services</DialogTitle>
+              <DialogDescription>
+                Import your courses and materials directly from your school's LMS, cloud storage, and more.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-2">
+              <h3 className="mb-4 text-lg font-medium">Learning Platforms</h3>
+              <div className="space-y-4">
+                  {lmsPlatforms.map(platform => (
+                      <div key={platform.name} className="flex items-center justify-between p-3 rounded-lg border">
+                          <div className="flex items-center gap-4">
+                              {platform.icon}
+                              <span className="font-medium">{platform.name}</span>
+                          </div>
+                          <Button variant="secondary" onClick={() => handleConnect(platform.name)}>Connect</Button>
+                      </div>
+                  ))}
+              </div>
             </div>
-          </div>
 
-          <Separator />
+            <Separator />
 
-          <div className="py-2">
-            <h3 className="mb-4 text-lg font-medium">Cloud Storage</h3>
-            <div className="space-y-4">
-                {cloudPlatforms.map(platform => (
-                    <div key={platform.name} className="flex items-center justify-between p-3 rounded-lg border">
-                        <div className="flex items-center gap-4">
-                            {platform.icon}
-                            <span className="font-medium">{platform.name}</span>
-                        </div>
-                        <Button variant="secondary" onClick={() => handleConnect(platform.name)}>Connect</Button>
-                    </div>
-                ))}
+            <div className="py-2">
+              <h3 className="mb-4 text-lg font-medium">Cloud Storage</h3>
+              <div className="space-y-4">
+                  {cloudPlatforms.map(platform => (
+                      <div key={platform.name} className="flex items-center justify-between p-3 rounded-lg border">
+                          <div className="flex items-center gap-4">
+                              {platform.icon}
+                              <span className="font-medium">{platform.name}</span>
+                          </div>
+                          <Button variant="secondary" onClick={() => handleConnect(platform.name)}>Connect</Button>
+                      </div>
+                  ))}
+              </div>
             </div>
-          </div>
 
-          <Separator />
-          
-          <div className="py-2">
-            <h3 className="mb-4 text-lg font-medium">Citation Managers</h3>
-            <div className="space-y-4">
-                {citationManagers.map(platform => (
-                    <div key={platform.name} className="flex items-center justify-between p-3 rounded-lg border">
-                        <div className="flex items-center gap-4">
-                            {platform.icon}
-                            <span className="font-medium">{platform.name}</span>
-                        </div>
-                        <Button variant="secondary" onClick={() => handleConnect(platform.name)}>Connect</Button>
-                    </div>
-                ))}
+            <Separator />
+            
+            <div className="py-2">
+              <h3 className="mb-4 text-lg font-medium">Citation Managers</h3>
+              <div className="space-y-4">
+                  {citationManagers.map(platform => (
+                      <div key={platform.name} className="flex items-center justify-between p-3 rounded-lg border">
+                          <div className="flex items-center gap-4">
+                              {platform.icon}
+                              <span className="font-medium">{platform.name}</span>
+                          </div>
+                          <Button variant="secondary" onClick={() => handleConnect(platform.name)}>Connect</Button>
+                      </div>
+                  ))}
+              </div>
+              <p className="text-sm text-muted-foreground px-1 pt-2">
+                  Connect your favorite citation manager to easily add references to your research notes.
+              </p>
             </div>
-             <p className="text-sm text-muted-foreground px-1 pt-2">
-                Connect your favorite citation manager to easily add references to your research notes.
-            </p>
-          </div>
 
-          <Separator />
+            <Separator />
 
-          <div className="py-2">
-            <h3 className="mb-4 text-lg font-medium">Browser Clipper</h3>
-            <div className="space-y-2">
-                <div className="flex items-center justify-between p-3 rounded-lg border">
-                    <div className="flex items-center gap-4">
-                        <ClipboardPaste className="w-6 h-6" />
-                        <span className="font-medium">Web Clipper</span>
-                    </div>
-                    <Button variant="secondary" onClick={() => handleConnect("Web Clipper")}>Get Extension</Button>
-                </div>
-                 <p className="text-sm text-muted-foreground px-1">
-                    Clip articles, research, and important webpages directly into your StudyWise notes.
-                </p>
+            <div className="py-2">
+              <h3 className="mb-4 text-lg font-medium">Browser Clipper</h3>
+              <div className="space-y-2">
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-4">
+                          <ClipboardPaste className="w-6 h-6" />
+                          <span className="font-medium">Web Clipper</span>
+                      </div>
+                      <Button variant="secondary" onClick={() => handleConnect("Web Clipper")}>Get Extension</Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground px-1">
+                      Clip articles, research, and important webpages directly into your StudyWise notes.
+                  </p>
+              </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+        <Button variant="ghost" className="justify-start w-full" onClick={logout}>
+          <LogOut className="mr-2 h-4 w-4" /> Logout
+        </Button>
+        {user && (
+          <p className="px-3 text-xs text-muted-foreground truncate" title={user.email || ''}>
+            {user.email}
+          </p>
+        )}
+      </div>
     </aside>
   );
 }

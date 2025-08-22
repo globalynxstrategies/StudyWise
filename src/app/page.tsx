@@ -11,8 +11,9 @@ import { Separator } from "@/components/ui/separator";
 import { CommandPalette } from "@/components/studywise/command-palette";
 import { Notebook, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import AuthGuard from "@/components/auth-guard";
 
-export default function Home() {
+function App() {
   const {
     courses,
     notes,
@@ -30,7 +31,7 @@ export default function Home() {
     setSelectedNoteId(null);
   }, [selectedCourseId]);
   
-  const handleAddNewNote = () => {
+  const handleAddNewNote = React.useCallback(() => {
     if (selectedCourseId && selectedCourseId !== "all") {
       const newNote = actions.addNote({
         title: "New Note",
@@ -42,7 +43,7 @@ export default function Home() {
     } else {
         alert("Please select a course before creating a new note.")
     }
-  };
+  }, [actions, selectedCourseId]);
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -191,4 +192,13 @@ export default function Home() {
       />
     </div>
   );
+}
+
+
+export default function Home() {
+  return (
+    <AuthGuard>
+      <App />
+    </AuthGuard>
+  )
 }
