@@ -76,12 +76,13 @@ export function useStudyData() {
     setNotes((prev) => prev.filter((n) => n.courseId !== courseId));
   }, []);
 
-  const addNote = useCallback((data: Omit<Note, "id" | "createdAt" | "updatedAt" | "isPinned">): Note => {
+  const addNote = useCallback((data: Omit<Note, "id" | "createdAt" | "updatedAt" | "isPinned" | "reactions">): Note => {
     const now = new Date().toISOString();
     const newNote: Note = {
       ...data,
       id: crypto.randomUUID(),
       isPinned: false,
+      reactions: {},
       createdAt: now,
       updatedAt: now,
     };
@@ -113,6 +114,19 @@ export function useStudyData() {
     return newTag;
   }, [tags]);
 
+  const updateNoteReaction = useCallback((noteId: string, emoji: string) => {
+    setNotes(prev =>
+        prev.map(n => {
+            if (n.id === noteId) {
+                const newReactions = { ...(n.reactions || {}) };
+                newReactions[emoji] = (newReactions[emoji] || 0) + 1;
+                return { ...n, reactions: newReactions, updatedAt: new Date().toISOString() };
+            }
+            return n;
+        })
+    );
+  }, []);
+
   return {
     courses,
     notes,
@@ -124,6 +138,7 @@ export function useStudyData() {
       updateNote,
       deleteNote,
       addTag,
+      updateNoteReaction,
     },
   };
 }

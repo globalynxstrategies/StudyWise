@@ -17,6 +17,7 @@ export interface Note {
   tagIds: string[];
   isPinned: boolean;
   videoUrl?: string; // Optional YouTube video URL
+  reactions?: { [key: string]: number }; // e.g. { "👍": 1, "❤️": 5 }
   createdAt: string;
   updatedAt: string;
 }

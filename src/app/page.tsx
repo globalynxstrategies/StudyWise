@@ -107,6 +107,7 @@ export default function Home() {
                   setSelectedNoteId(null);
                 }}
                 createTag={actions.addTag}
+                updateNoteReaction={actions.updateNoteReaction}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-muted-foreground">

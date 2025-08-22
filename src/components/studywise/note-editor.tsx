@@ -49,6 +49,7 @@ interface NoteEditorProps {
   updateNote: (id: string, updates: Partial<Note>) => void;
   deleteNote: (id: string) => void;
   createTag: (name: string) => Tag;
+  updateNoteReaction: (noteId: string, emoji: string) => void;
 }
 
 const getYouTubeVideoId = (url: string): string | null => {
@@ -58,7 +59,9 @@ const getYouTubeVideoId = (url: string): string | null => {
     return (match && match[2].length === 11) ? match[2] : null;
 };
 
-export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }: NoteEditorProps) {
+const availableReactions = ['👍', '❤️', '💡', '🔥', '🤔', '🎉'];
+
+export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag, updateNoteReaction }: NoteEditorProps) {
   const [title, setTitle] = React.useState(note.title);
   const [content, setContent] = React.useState(note.content);
   const [tagInput, setTagInput] = React.useState("");
@@ -467,27 +470,47 @@ export function NoteEditor({ note, allTags, updateNote, deleteNote, createTag }:
         </div>
       </div>
 
-      <div className="p-4 border-t space-y-2">
-        <label className="text-sm font-medium">Tags</label>
-        <div className="flex flex-wrap gap-2">
-          {noteTags.map((tag) => (
-            <Badge key={tag.id} variant="secondary" className="pl-3 pr-1">
-              {tag.name}
-              <button onClick={() => handleRemoveTag(tag.id)} className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5">
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
+      <div className="p-4 border-t space-y-4">
+        <div>
+            <label className="text-sm font-medium mb-2 block">Reactions</label>
+            <div className="flex flex-wrap gap-2">
+                {availableReactions.map(emoji => (
+                    <Button 
+                        key={emoji}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateNoteReaction(note.id, emoji)}
+                        className="relative"
+                    >
+                        <span className="text-lg">{emoji}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">{note.reactions?.[emoji] || 0}</span>
+                    </Button>
+                ))}
+            </div>
         </div>
-        <div className="flex gap-2">
-          <Input
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
-            placeholder="Add a new tag..."
-            className="h-8"
-          />
-          <Button size="sm" onClick={handleAddTag}><Plus className="h-4 w-4 mr-1" /> Add</Button>
+        <Separator />
+        <div>
+            <label className="text-sm font-medium">Tags</label>
+            <div className="flex flex-wrap gap-2 mt-2">
+            {noteTags.map((tag) => (
+                <Badge key={tag.id} variant="secondary" className="pl-3 pr-1">
+                {tag.name}
+                <button onClick={() => handleRemoveTag(tag.id)} className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5">
+                    <X className="h-3 w-3" />
+                </button>
+                </Badge>
+            ))}
+            </div>
+            <div className="flex gap-2 mt-2">
+            <Input
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
+                placeholder="Add a new tag..."
+                className="h-8"
+            />
+            <Button size="sm" onClick={handleAddTag}><Plus className="h-4 w-4 mr-1" /> Add</Button>
+            </div>
         </div>
       </div>
       <Sheet open={isAiSheetOpen} onOpenChange={setAiSheetOpen}>
