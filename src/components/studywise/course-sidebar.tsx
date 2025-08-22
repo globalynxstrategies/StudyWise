@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StudyWiseLogo } from "@/components/studywise/studywise-logo";
-import { BookCopy, Plus, Trash2, Link as LinkIcon, GraduationCap, FolderUp, ClipboardPaste, BookText } from "lucide-react";
+import { BookCopy, Plus, Trash2, Link as LinkIcon, GraduationCap, FolderUp, ClipboardPaste, BookText, Moon, Sun, Monitor, Paintbrush } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "next-themes";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface CourseSidebarProps {
   courses: Course[];
@@ -55,6 +57,42 @@ const citationManagers = [
     { name: 'Zotero', icon: <BookText className="w-6 h-6" /> },
     { name: 'Mendeley', icon: <BookText className="w-6 h-6" /> },
 ]
+
+function ThemeSwitcher() {
+    const { setTheme } = useTheme()
+  
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="justify-start">
+             <Paintbrush className="mr-2 h-4 w-4" /> Theme
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setTheme("light")}>
+            <Sun className="mr-2 h-4 w-4" />
+            Light
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setTheme("dark")}>
+            <Moon className="mr-2 h-4 w-4" />
+            Dark
+          </DropdownMenuItem>
+           <DropdownMenuItem onClick={() => setTheme("sepia")}>
+            <BookCopy className="mr-2 h-4 w-4" />
+            Sepia
+          </DropdownMenuItem>
+           <DropdownMenuItem onClick={() => setTheme("high-contrast")}>
+            <Monitor className="mr-2 h-4 w-4" />
+            High Contrast
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setTheme("system")}>
+            <Monitor className="mr-2 h-4 w-4" />
+            System
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }
 
 
 export function CourseSidebar({
@@ -163,6 +201,7 @@ export function CourseSidebar({
       </ScrollArea>
 
       <Separator className="my-2" />
+      <ThemeSwitcher />
 
        <Dialog open={isIntegrationsOpen} onOpenChange={setIntegrationsOpen}>
         <DialogTrigger asChild>
