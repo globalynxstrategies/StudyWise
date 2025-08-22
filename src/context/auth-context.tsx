@@ -7,6 +7,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  signInAnonymously,
   User,
   Auth,
 } from "firebase/auth";
@@ -19,6 +20,7 @@ interface AuthContextType {
   signUp: (email: string, pass: string) => Promise<any>;
   signIn: (email: string, pass: string) => Promise<any>;
   signInWithGoogle: () => Promise<any>;
+  signInAsGuest: () => Promise<any>;
   logout: () => Promise<any>;
 }
 
@@ -28,6 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   signUp: async () => {},
   signIn: async () => {},
   signInWithGoogle: async () => {},
+  signInAsGuest: async () => {},
   logout: async () => {},
 });
 
@@ -56,7 +59,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return signInWithPopup(auth, googleProvider);
   };
 
+  const signInAsGuest = () => {
+    return signInAnonymously(auth);
+  };
+
   const logout = () => {
+    const isGuest = auth.currentUser?.isAnonymous;
+    if (isGuest) {
+        // For guest users, also clear local data if you want a clean slate
+        window.localStorage.removeItem('studywise-courses');
+        window.localStorage.removeItem('studywise-notes');
+        window.localStorage.removeItem('studywise-tags');
+    }
     return signOut(auth).then(() => {
       router.push('/login');
     });
@@ -68,6 +82,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signUp,
     signIn,
     signInWithGoogle,
+    signInAsGuest,
     logout,
   };
 

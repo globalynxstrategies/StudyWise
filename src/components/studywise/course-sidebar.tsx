@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StudyWiseLogo } from "@/components/studywise/studywise-logo";
-import { BookCopy, Plus, Trash2, Link as LinkIcon, GraduationCap, FolderUp, ClipboardPaste, BookText, Moon, Sun, Monitor, Paintbrush, LogOut } from "lucide-react";
+import { BookCopy, Plus, Trash2, Link as LinkIcon, GraduationCap, FolderUp, ClipboardPaste, BookText, Moon, Sun, Monitor, Paintbrush, LogOut, User } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -124,6 +124,8 @@ export function CourseSidebar({
         description: "This feature is coming soon!",
     })
   }
+
+  const isGuest = user?.isAnonymous;
 
   return (
     <aside className="w-64 flex flex-col p-4 bg-card/50">
@@ -291,12 +293,19 @@ export function CourseSidebar({
           </DialogContent>
         </Dialog>
         <Button variant="ghost" className="justify-start w-full" onClick={logout}>
-          <LogOut className="mr-2 h-4 w-4" /> Logout
+          <LogOut className="mr-2 h-4 w-4" /> {isGuest ? 'Exit Guest Mode' : 'Logout'}
         </Button>
         {user && (
-          <p className="px-3 text-xs text-muted-foreground truncate" title={user.email || ''}>
-            {user.email}
-          </p>
+            isGuest ? (
+                <div className="px-3 text-xs text-muted-foreground flex items-center gap-2">
+                    <User className="w-3 h-3" />
+                    <span>Guest Mode</span>
+                </div>
+            ) : (
+                <p className="px-3 text-xs text-muted-foreground truncate" title={user.email || ''}>
+                    {user.email}
+                </p>
+            )
         )}
       </div>
     </aside>
