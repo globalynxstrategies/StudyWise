@@ -8,7 +8,9 @@ import { NoteList } from "@/components/studywise/note-list";
 import { NoteEditor } from "@/components/studywise/note-editor";
 import { ReviewModal } from "@/components/studywise/review-modal";
 import { Separator } from "@/components/ui/separator";
-import { Notebook } from "lucide-react";
+import { CommandPalette } from "@/components/studywise/command-palette";
+import { Notebook, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   const {
@@ -21,11 +23,23 @@ export default function Home() {
   const [selectedCourseId, setSelectedCourseId] = React.useState<string | null>("all");
   const [selectedNoteId, setSelectedNoteId] = React.useState<string | null>(null);
   const [isReviewModalOpen, setReviewModalOpen] = React.useState(false);
+  const [isCommandPaletteOpen, setCommandPaletteOpen] = React.useState(false);
 
   React.useEffect(() => {
     // When the course changes, deselect the note
     setSelectedNoteId(null);
   }, [selectedCourseId]);
+  
+  React.useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setCommandPaletteOpen((open) => !open)
+      }
+    }
+    document.addEventListener("keydown", down)
+    return () => document.removeEventListener("keydown", down)
+  }, [])
 
   const handleSelectCourse = (courseId: string | null) => {
     setSelectedCourseId(courseId);
@@ -72,6 +86,11 @@ export default function Home() {
       : [];
   }, [notes, selectedCourseId]);
 
+  const runCommand = (command: () => void) => {
+    setCommandPaletteOpen(false);
+    command();
+  }
+
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       <CourseSidebar
@@ -83,6 +102,15 @@ export default function Home() {
       />
       <Separator orientation="vertical" />
       <main className="flex-1 flex flex-col min-w-0">
+        <div className="flex-shrink-0 border-b p-2 flex items-center justify-end">
+            <Button variant="outline" onClick={() => setCommandPaletteOpen(true)}>
+                <Search className="mr-2 h-4 w-4" />
+                <span>Search...</span>
+                <kbd className="ml-4 pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+                    <span className="text-xs">⌘</span>K
+                </kbd>
+            </Button>
+        </div>
         <div className="flex-1 flex overflow-hidden">
           <NoteList
             notes={filteredNotes}
@@ -127,6 +155,17 @@ export default function Home() {
             onClose={() => setReviewModalOpen(false)}
           />
       )}
+      <CommandPalette 
+        isOpen={isCommandPaletteOpen}
+        setIsOpen={setCommandPaletteOpen}
+        courses={courses}
+        notes={notes}
+        runCommand={runCommand}
+        onSelectCourse={handleSelectCourse}
+        onSelectNote={handleSelectNote}
+        onAddNewNote={handleAddNewNote}
+        onAddCourse={(name) => runCommand(() => actions.addCourse(name))}
+      />
     </div>
   );
 }
