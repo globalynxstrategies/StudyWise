@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StudyWiseLogo } from "@/components/studywise/studywise-logo";
-import { BookCopy, Plus, Trash2, Link as LinkIcon, GraduationCap } from "lucide-react";
+import { BookCopy, Plus, Trash2, Link as LinkIcon, GraduationCap, FolderUp } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +45,12 @@ const lmsPlatforms = [
     { name: 'Google Classroom', icon: <GraduationCap className="w-6 h-6" /> },
 ]
 
+const cloudPlatforms = [
+    { name: 'Google Drive', icon: <FolderUp className="w-6 h-6" /> },
+    { name: 'Dropbox', icon: <FolderUp className="w-6 h-6" /> },
+    { name: 'OneDrive', icon: <FolderUp className="w-6 h-6" /> },
+]
+
 export function CourseSidebar({
   courses,
   selectedCourseId,
@@ -66,7 +72,7 @@ export function CourseSidebar({
     }
   };
   
-  const handleConnectLms = (name: string) => {
+  const handleConnect = (name: string) => {
     toast({
         title: `Connecting to ${name}...`,
         description: "This feature is coming soon!",
@@ -158,23 +164,44 @@ export function CourseSidebar({
              <LinkIcon className="mr-2 h-4 w-4" /> Integrations
           </Button>
         </DialogTrigger>
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Connect to Learning Platforms</DialogTitle>
+            <DialogTitle>Connect to External Services</DialogTitle>
             <DialogDescription>
-              Import your courses and materials directly from your school's learning management system.
+              Import your courses and materials directly from your school's LMS or cloud storage.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-4">
-            {lmsPlatforms.map(platform => (
-                <div key={platform.name} className="flex items-center justify-between p-3 rounded-lg border">
-                    <div className="flex items-center gap-4">
-                        {platform.icon}
-                        <span className="font-medium">{platform.name}</span>
+          
+          <div className="py-2">
+            <h3 className="mb-4 text-lg font-medium">Learning Platforms</h3>
+            <div className="space-y-4">
+                {lmsPlatforms.map(platform => (
+                    <div key={platform.name} className="flex items-center justify-between p-3 rounded-lg border">
+                        <div className="flex items-center gap-4">
+                            {platform.icon}
+                            <span className="font-medium">{platform.name}</span>
+                        </div>
+                        <Button variant="secondary" onClick={() => handleConnect(platform.name)}>Connect</Button>
                     </div>
-                    <Button variant="secondary" onClick={() => handleConnectLms(platform.name)}>Connect</Button>
-                </div>
-            ))}
+                ))}
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="py-2">
+            <h3 className="mb-4 text-lg font-medium">Cloud Storage</h3>
+            <div className="space-y-4">
+                {cloudPlatforms.map(platform => (
+                    <div key={platform.name} className="flex items-center justify-between p-3 rounded-lg border">
+                        <div className="flex items-center gap-4">
+                            {platform.icon}
+                            <span className="font-medium">{platform.name}</span>
+                        </div>
+                        <Button variant="secondary" onClick={() => handleConnect(platform.name)}>Connect</Button>
+                    </div>
+                ))}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
